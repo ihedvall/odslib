@@ -48,6 +48,9 @@ target_include_directories(ods PUBLIC
         $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         )
+
+target_compile_definitions(util PRIVATE XML_STATIC)
+
 set(ODS_PUBLIC_HEADERS include/ods/itable.h)
 
 set_target_properties(ods PROPERTIES PUBLIC_HEADER "${ODS_PUBLIC_HEADERS}")

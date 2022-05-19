@@ -25,7 +25,11 @@ target_include_directories(test_ods PRIVATE
         ${Boost_INCLUDE_DIRS}
         ${SQLite3_INCLUDE_DIRS})
 
-target_link_options(test_ods PRIVATE -static -fstack-protector)
+if (MINGW)
+    target_link_options(test_ods PRIVATE -static -fstack-protector)
+elseif (MSVC)
+    target_compile_definitions(test_ods PRIVATE _WIN32_WINNT=0x0A00)
+endif()
 
 target_link_libraries(test_ods PRIVATE ods)
 target_link_libraries(test_ods PRIVATE mdf)
@@ -35,11 +39,13 @@ target_link_libraries(test_ods PRIVATE ${Boost_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${EXPAT_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${ZLIB_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${OPENSSL_CRYPTO_LIBRARY})
+target_link_libraries(test_ods PRIVATE ${GTEST_BOTH_LIBRARIES})
+
+if (WIN32)
 target_link_libraries(test_ods PRIVATE ws2_32)
 target_link_libraries(test_ods PRIVATE mswsock)
-
-target_link_libraries(test_ods PRIVATE iconv)
-target_link_libraries(test_ods PRIVATE ${GTEST_BOTH_LIBRARIES})
+#target_link_libraries(test_ods PRIVATE iconv)
+endif()
 
 
 include(GoogleTest)

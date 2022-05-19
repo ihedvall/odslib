@@ -1018,8 +1018,7 @@ bool SqliteDatabase::FetchModelEnvironment(IModel &model) {
       // Pre-fill with file information in case no environment row. This is actually the normal case.
     const std::filesystem::path full_name(FileName());
     const auto last = std::filesystem::last_write_time(full_name);
-    const auto sys_time = std::chrono::file_clock::to_sys(last);
-    const uint64_t ns1970 = util::time::TimeStampToNs(sys_time);
+    const auto ns1970 = util::time::FileTimeToNs(last);
     model.Modified(ns1970);
     model.Created(ns1970);
     model.Name(full_name.stem().string());

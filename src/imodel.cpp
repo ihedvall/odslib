@@ -306,8 +306,7 @@ bool IModel::ReadModel(const std::string &filename) {
     try {
       std::filesystem::path file(filename);
       const auto last = std::filesystem::last_write_time(file);
-      const auto sys_time = std::chrono::file_clock::to_sys(last);
-      const uint64_t ns1970 = util::time::TimeStampToNs(sys_time);
+      const auto ns1970 = util::time::FileTimeToNs(last);
       Modified(ns1970);
     } catch (const std::exception& ) {
     }

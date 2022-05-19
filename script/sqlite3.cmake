@@ -1,5 +1,6 @@
 # Copyright 2021 Ingemar Hedvall
 # SPDX-License-Identifier: MIT
+
 set(SQLite3_ROOT "K:/sqlite3/v337/sqlite3" CACHE PATH "The Expat library is required for the build")
 if (NOT SQLite3_FOUND)
     set(SQLite3_FOUND TRUE)
