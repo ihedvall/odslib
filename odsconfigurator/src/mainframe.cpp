@@ -10,7 +10,7 @@
 
 #include <util/logstream.h>
 #include <ods/atfxfile.h>
-#include "../../odslib/src/sqlitedatabase.h"
+#include "sqlitedatabase.h"
 #include "mainframe.h"
 #include "odsconfigid.h"
 #include "odsdocument.h"
