@@ -97,7 +97,7 @@ TestDirectory::TestDirectory()
 }
 
 TestDirectory::~TestDirectory() {
-  Stop();
+  TestDirectory::Stop();
 }
 
 bool TestDirectory::Init() {
@@ -295,19 +295,20 @@ bool TestDirectory::FetchFromDb() {
   const auto* quantity_table = model_.GetBaseId(BaseId::AoQuantity);
   const auto* unit_table = model_.GetBaseId(BaseId::AoUnit);
 
+  SqlFilter empty_filter;
   DatabaseGuard db_lock(database_);
   try {
     if (test_bed_table != nullptr) {
-      database_.FetchItemList(*test_bed_table, test_bed_list_);
+      database_.FetchItemList(*test_bed_table, test_bed_list_, empty_filter);
     }
     if (test_table != nullptr) {
-      database_.FetchItemList(*test_table, test_list_);
+      database_.FetchItemList(*test_table, test_list_, empty_filter);
     }
     if (quantity_table != nullptr) {
-      database_.FetchItemList(*quantity_table, quantity_list_);
+      database_.FetchItemList(*quantity_table, quantity_list_, empty_filter);
     }
     if (unit_table != nullptr) {
-      database_.FetchItemList(*unit_table, unit_list_);
+      database_.FetchItemList(*unit_table, unit_list_, empty_filter);
     }
   } catch (const std::exception& err) {
     LOG_ERROR() << "Fetching from DB failed. Error: " << err.what();
@@ -1169,9 +1170,10 @@ int64_t TestDirectory::UpdateUnit(const std::string &unit) {
 
 bool TestDirectory::FetchNameIdMap(const ITable &table, NameIdMap &dest_list) {
   DatabaseGuard db_lock(database_);
+  SqlFilter empty_filter;
   try {
     IdNameMap temp_list;
-    database_.FetchNameMap(table,temp_list);
+    database_.FetchNameMap(table,temp_list, empty_filter);
     for (const auto& itr : temp_list) {
       dest_list.insert({itr.second, itr.first});
     }

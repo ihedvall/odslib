@@ -194,7 +194,7 @@ SqliteDatabase::SqliteDatabase(const std::string &filename) {
 }
 
 SqliteDatabase::~SqliteDatabase() {
-  Close(false);
+  SqliteDatabase::Close(false);
 }
 
 bool SqliteDatabase::Open() {
@@ -229,6 +229,13 @@ bool SqliteDatabase::Open() {
 
     if (database_ != nullptr) {
       sqlite3_busy_handler(database_,BusyHandler, this);
+      if (listen_ && listen_->IsActive()) {
+        sqlite3_trace_v2(database_, SQLITE_TRACE_STMT | SQLITE_TRACE_PROFILE | SQLITE_TRACE_ROW | SQLITE_TRACE_CLOSE,
+                         TraceCallback, this);
+        listen_->ListenTextEx(util::time::TimeStampToNs(), Name(), "Open database.");
+      } else {
+        sqlite3_trace_v2(database_, 0, nullptr, nullptr);
+      }
       ExecuteSql("PRAGMA foreign_keys = ON");
       ExecuteSql("BEGIN TRANSACTION");
       transaction_ = true;
@@ -238,6 +245,7 @@ bool SqliteDatabase::Open() {
     Close(false);
     LOG_ERROR() << error.what();
   }
+
   return open;
 }
 
@@ -255,6 +263,13 @@ bool SqliteDatabase::OpenEx(int flags) {
   }
   if (database_ != nullptr) {
     sqlite3_busy_handler(database_,BusyHandler, this);
+    if (listen_ && listen_->IsActive()) {
+      sqlite3_trace_v2(database_, SQLITE_TRACE_STMT | SQLITE_TRACE_PROFILE | SQLITE_TRACE_ROW | SQLITE_TRACE_CLOSE,
+                       TraceCallback, this);
+      listen_->ListenTextEx(util::time::TimeStampToNs(), Name(), "OpenEx database.");
+    } else {
+      sqlite3_trace_v2(database_, 0, nullptr, nullptr);
+    }
     ExecuteSql("PRAGMA foreign_keys = ON");
     ExecuteSql("BEGIN TRANSACTION");
     transaction_ = true;
@@ -928,7 +943,7 @@ bool SqliteDatabase::FixUnitStrings(const IModel &model) {
       return true;
     }
     IdNameMap unit_list;
-    FetchNameMap(*unit_table, unit_list);
+    FetchNameMap(*unit_table, unit_list,SqlFilter());
     const auto table_list = model.AllTables();
     for (const auto* tab : table_list) {
       auto* table = tab == nullptr ? nullptr : const_cast<ITable*>(tab);
@@ -1067,6 +1082,101 @@ bool SqliteDatabase::FetchModelEnvironment(IModel &model) {
     return false;
   }
   return true;
+}
+
+int SqliteDatabase::TraceCallback(unsigned int mask, void *context, void *arg1, void *arg2) {
+  if (context == nullptr) {
+    return 0;
+  }
+  auto* database = reinterpret_cast<SqliteDatabase*> (context);
+  if (!database->listen_ || !database->listen_->IsActive()) {
+    return 0;
+  }
+
+  switch (mask) {
+    case SQLITE_TRACE_STMT: {
+      if (arg2 == nullptr) {
+        return 0;
+      }
+      const auto* sql = reinterpret_cast<const char*>(arg2);
+      if (database->listen_->LogLevel() == 1) {
+        // Show statement and rows
+        database->listen_->ListenTextEx(util::time::TimeStampToNs(),
+                                        database->Name(),
+                                        "%s", sql);
+      }
+      database->row_count_ = 0;
+      break;
+    }
+
+    case SQLITE_TRACE_PROFILE: {
+      if (arg1 == nullptr || arg2 == nullptr) {
+        return 0;
+      }
+      auto* stmt = reinterpret_cast<sqlite3_stmt*>(arg1);
+      const auto* nano_sec = reinterpret_cast<int64_t*>(arg2);
+      const auto* sql = sqlite3_sql(stmt);
+      if (sql != nullptr && database->listen_->LogLevel() == 0) {
+          // Show statement only
+          database->listen_->ListenTextEx(util::time::TimeStampToNs(),
+                 database->Name(),"%s (Rows: %d %g ms)", sql,
+                 static_cast<int>(database->row_count_),
+                 static_cast<double>(*nano_sec) / 1000000.0 );
+      }
+      break;
+    }
+
+    case SQLITE_TRACE_ROW: {
+      if (arg1 == nullptr) {
+        return 0;
+      }
+
+      auto* stmt = reinterpret_cast<sqlite3_stmt*>(arg1);
+      const auto* sql = sqlite3_sql(stmt);
+      if (sql == nullptr) {
+        return 0;
+      }
+      if (database->listen_->LogLevel() == 1) {
+        std::ostringstream out;
+        out << "Row " << database->row_count_ << "; ";
+        const auto count = sqlite3_data_count(stmt);
+        for (int column = 0; column < count; ++column) {
+          if (column > 0) {
+            out << ",";
+          }
+          const auto* text = sqlite3_column_text(stmt,column);
+          out << (text != nullptr ? reinterpret_cast<const char*>(text) : "NULL");
+        }
+
+        // Show data in rows
+        database->listen_->ListenTextEx(util::time::TimeStampToNs(),
+                                        database->Name(),"%d : %s", static_cast<int>(database->row_count_),
+                                        out.str().c_str());
+      }
+      ++database->row_count_;
+      break;
+    }
+
+    case SQLITE_TRACE_CLOSE: {
+      if (arg1 == nullptr) {
+        return 0;
+      }
+      database->listen_->ListenTextEx(util::time::TimeStampToNs(), database->Name(),"Close database");
+      break;
+    }
+
+    default:
+      break;
+  }
+  return 0;
+}
+
+std::string SqliteDatabase::Name() const{
+  try {
+    std::filesystem::path fullname(filename_);
+    return fullname.stem().string();
+  } catch (const std::exception&) {}
+  return {};
 }
 
 } // end namespace

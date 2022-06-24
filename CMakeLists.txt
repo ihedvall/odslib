@@ -6,14 +6,24 @@ project(odslib
         DESCRIPTION "Interface against ODS databases"
         LANGUAGES CXX)
 
+option(BUILD_SHARED_LIBS "Static libraries are preferred" OFF)
+option(BUILD_STATIC_LIBS "Static libraries are normally used" ON)
+option(BUILD_DOC "If doxygen is installed, then build documentation in Release mode" ON)
+
+if (NOT COMP_DIR)
+    set(COMP_DIR "k:")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_DEBUG_POSTFIX d)
 
 include("script/boost.cmake")
 include("script/sqlite3.cmake")
+include("script/zlib.cmake")
+include("script/openssl.cmake")
+include("script/wxwidgets.cmake")
 include ("script/utillib.cmake")
 include ("script/mdflib.cmake")
-
 include("script/googletest.cmake")
 include("script/doxygen.cmake")
 
@@ -64,6 +74,10 @@ install(TARGETS ods
         RUNTIME DESTINATION ods/bin
         PUBLIC_HEADER DESTINATION ods/include/ods)
 
+if (wxWidgets_FOUND )
+    add_subdirectory(odsconfigurator)
+endif()
+
 if (GTEST_FOUND)
     enable_testing()
     add_subdirectory(test)
@@ -71,6 +85,11 @@ endif()
 
 if (DOXYGEN_FOUND AND (CMAKE_BUILD_TYPE MATCHES "^[Rr]elease") )
     set(DOXYGEN_RECURSIVE YES)
+    set(DOXYGEN_RECURSIVE NO)
+    set(DOXYGEN_REPEAT_BRIEF NO)
+    set(DOXYGEN_PROJECT_NAME "MDFLib")
+    # set(DOXYGEN_HTML_EXTRA_STYLESHEET doxygen/utillib.css)
+    # set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs/manual)
     doxygen_add_docs(doc_libods ALL
             include/ods
             COMMENT "ODS Library generating API documentation with Doxygen")

@@ -1,0 +1,605 @@
+﻿<?xml version='1.0' encoding='UTF-8' standalone='yes'?>
+<OdsModel>
+  <Version>2</Version>
+  <NAme>cachedb</NAme>
+  <ApplicationVersion>1.0</ApplicationVersion>
+  <Description>Cache database for test directory environemt</Description>
+  <CreatedBy>Ingemar Hedvall</CreatedBy>
+  <ModifiedBy>Ingemar Hedvall</ModifiedBy>
+  <BaseVersion>asam35</BaseVersion>
+  <Created>2022-04-06T07:35:40Z</Created>
+  <Modified>2022-04-06T07:35:40Z</Modified>
+  <SourceName/>
+  <SourceType/>
+  <SourceInfo/>
+  <EnumList>
+    <Enumerate locked='yes' name='ao_storagetype_enum'>
+      <Item value='database' number='0'/>
+      <Item value='external_only' number='1'/>
+      <Item value='mixed' number='2'/>
+      <Item value='foreign_format' number='3'/>
+    </Enumerate>
+    <Enumerate locked='yes' name='datatype_enum'>
+      <Item value='DT_UNKNOWN' number='0'/>
+      <Item value='DT_STRING' number='1'/>
+      <Item value='DT_SHORT' number='2'/>
+      <Item value='DT_FLOAT' number='3'/>
+      <Item value='DT_BOOLEAN' number='4'/>
+      <Item value='DT_BYTE' number='5'/>
+      <Item value='DT_LONG' number='6'/>
+      <Item value='DT_DOUBLE' number='7'/>
+      <Item value='DT_LONGLONG' number='8'/>
+      <Item value='DT_ID' number='9'/>
+      <Item value='DT_DATE' number='10'/>
+      <Item value='DT_BYTESTRING' number='11'/>
+      <Item value='DT_BLOB' number='12'/>
+      <Item value='DT_COMPLEX' number='13'/>
+      <Item value='DT_DCOMPLEX' number='14'/>
+      <Item value='DT_EXTERNALREF' number='28'/>
+      <Item value='DT_ENUM' number='30'/>
+    </Enumerate>
+  </EnumList>
+  <Element table='ENVIRONMENT' base='AoEnvironment' name='Environment' id='1'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='TEST_LEVEL' name='TestLevel'>
+      <DisplayName>Max Test Level</DisplayName>
+      <BaseName>max_test_level</BaseName>
+      <Type>DtLong</Type>
+    </Attribute>
+    <Attribute column='BASE_MODEL' name='BaseModelVersion'>
+      <DisplayName>Base Model Version</DisplayName>
+      <BaseName>base_model_version</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='APP_TYPE' name='AppType'>
+      <DisplayName>Application Type</DisplayName>
+      <BaseName>application_model_type</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='APP_VERSION' name='AppVersion'>
+      <DisplayName>Application Version</DisplayName>
+      <BaseName>application_model_version</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='DESCRIPTION' name='Description'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='CREATED' name='Created'>
+      <DisplayName>Created</DisplayName>
+      <BaseName>ao_created</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+    <Attribute column='CREATED_BY' name='CreatedBy'>
+      <DisplayName>Created By</DisplayName>
+      <BaseName>ao_created_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+    <Attribute column='MODIFIED' name='Modified'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+    <Attribute column='MODIFIED_BY' name='ModifiedBy'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+  </Element>
+  <Element table='UNIT' base='AoUnit' name='Unit' id='10'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags casesensitive='yes' index='yes' unique='yes'>137</Flags>
+    </Attribute>
+    <Attribute column='FACTOR' name='Factor'>
+      <DisplayName>Factor</DisplayName>
+      <BaseName>factor</BaseName>
+      <Type>DtDouble</Type>
+      <Flags obligatory='yes'>2</Flags>
+      <DefaultValue>1.0</DefaultValue>
+    </Attribute>
+    <Attribute column='OFFSET_X' name='Offset'>
+      <DisplayName>Offset</DisplayName>
+      <BaseName>offset</BaseName>
+      <Type>DtDouble</Type>
+      <Flags obligatory='yes'>2</Flags>
+      <DefaultValue>0.0</DefaultValue>
+    </Attribute>
+    <Attribute column='PHYS_DIM' name='PhysDim'>
+      <DisplayName>Physical Dimension</DisplayName>
+      <BaseName>phys_dimension</BaseName>
+      <Type>DtLongLong</Type>
+      <RefId>20</RefId>
+    </Attribute>
+  </Element>
+  <Element table='PHYSDIM' base='AoPhysicalDimension' name='PhysDim' id='20'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags casesensitive='yes' index='yes'>136</Flags>
+    </Attribute>
+    <Attribute column='LENGTH_EXP' name='LengthExp'>
+      <DisplayName>Length Exponent</DisplayName>
+      <BaseName>length_exp</BaseName>
+      <Type>DtLong</Type>
+    </Attribute>
+    <Attribute column='MASS_EXP' name='MassExp'>
+      <DisplayName>Mass Exponent</DisplayName>
+      <BaseName>mass_exp</BaseName>
+      <Type>DtLong</Type>
+    </Attribute>
+    <Attribute column='TIME_EXP' name='TimeExp'>
+      <DisplayName>Time Exponent</DisplayName>
+      <BaseName>time_exp</BaseName>
+      <Type>DtLong</Type>
+    </Attribute>
+    <Attribute column='CURR_EXP' name='CurrExp'>
+      <DisplayName>Current Exponent</DisplayName>
+      <BaseName>current_exp</BaseName>
+      <Type>DtLong</Type>
+    </Attribute>
+    <Attribute column='TEMP_EXP' name='TempExp'>
+      <DisplayName>Temperature Exponent</DisplayName>
+      <BaseName>temperature_exp</BaseName>
+      <Type>DtLong</Type>
+    </Attribute>
+    <Attribute column='MOL_EXP' name='MolarExp'>
+      <DisplayName>Molar Exponent</DisplayName>
+      <BaseName>molar_amount_exp</BaseName>
+      <Type>DtLong</Type>
+    </Attribute>
+    <Attribute column='LUM_EXP' name='LumExp'>
+      <DisplayName>Luminous Exponent</DisplayName>
+      <BaseName>luminous_intensity_exp</BaseName>
+      <Type>DtLong</Type>
+    </Attribute>
+  </Element>
+  <Element table='TESTBED' base='AoTestEquipment' name='TestBed' id='30'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='yes'>1</Flags>
+    </Attribute>
+    <Attribute column='DESCRIPTION' name='Description'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element table='SOURCEINFO' parent='30' base='AoTestDevice' name='SourceInfo' id='31'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='yes'>1</Flags>
+    </Attribute>
+    <Attribute column='TESTBED' name='TestBed'>
+      <Description>Reference to test bed</Description>
+      <DisplayName>Test Bed</DisplayName>
+      <BaseName>parent_equipment</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='yes' index='yes' unique='yes'>131</Flags>
+      <RefId>30</RefId>
+    </Attribute>
+    <Attribute column='DESCRIPTION' name='Description'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element table='TEST' base='AoTest' name='Test' id='40'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <Description>Test name</Description>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='yes'>1</Flags>
+    </Attribute>
+    <Attribute column='CREATED' name='Created'>
+      <Description>Date when test was created</Description>
+      <DisplayName>Created</DisplayName>
+      <BaseName>ao_created</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+    <Attribute column='TESTBED' name='TestBed'>
+      <Description>Test Bed Reference</Description>
+      <DisplayName>Test Bed</DisplayName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes'>128</Flags>
+      <RefId>30</RefId>
+    </Attribute>
+    <Attribute column='MODIFIED' name='Modified'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+  </Element>
+  <Element table='MEASFILE' parent='40' base='AoSubTest' name='MeasFile' id='41'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags obligatory='yes' unique='yes'>3</Flags>
+    </Attribute>
+    <Attribute column='TEST' name='Test'>
+      <DisplayName>Test</DisplayName>
+      <BaseName>parent_test</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='yes' index='yes' unique='yes'>131</Flags>
+      <RefId>40</RefId>
+    </Attribute>
+    <Attribute column='TESTFILE' name='TestFile'>
+      <Description>Reference to test file</Description>
+      <DisplayName>Test File</DisplayName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='yes' index='yes'>130</Flags>
+      <RefId>44</RefId>
+    </Attribute>
+    <Attribute column='STORED' name='Stored'>
+      <Description>Absolute time of the measurement file</Description>
+      <DisplayName>Stored</DisplayName>
+      <BaseName>version_date</BaseName>
+      <Type>DtDate</Type>
+      <Flags index='yes'>128</Flags>
+    </Attribute>
+    <Attribute column='VERSION' name='Version'>
+      <Description>File version</Description>
+      <DisplayName>Version</DisplayName>
+      <BaseName>version</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='PROGRAMID' name='ProgramId'>
+      <Description>Program that created this file</Description>
+      <DisplayName>Program ID</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='DESCRIPTION' name='Description'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='AUTHOR' name='Author'>
+      <DisplayName>Author</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='DEPARTMENT' name='Department'>
+      <DisplayName>Department</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='PROJECT' name='Project'>
+      <DisplayName>Project</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='MEASID' name='MeasurementId'>
+      <DisplayName>Measurement UUID</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='RECORDERID' name='RecorderId'>
+      <DisplayName>Recorder UUID</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='RECORDERINDEX' name='RecorderIndex'>
+      <DisplayName>Recorder File Index</DisplayName>
+      <Type>DtLongLong</Type>
+    </Attribute>
+  </Element>
+  <Element table='MEAS' parent='41' base='AoMeasurement' name='Meas' id='42'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <Description>DG Comment</Description>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='PARENT' name='MeasFile'>
+      <Description>Reference to measurement file</Description>
+      <DisplayName>Measurement File</DisplayName>
+      <BaseName>test</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes'>128</Flags>
+      <RefId>41</RefId>
+    </Attribute>
+    <Attribute column='STORAGE' name='StorageType'>
+      <DisplayName>Storage Type</DisplayName>
+      <BaseName>ao_storage_type</BaseName>
+      <Type enum='ao_storagetype_enum'>DtEnum</Type>
+      <Flags obligatory='yes' auto='yes'>6</Flags>
+    </Attribute>
+    <Attribute column='MEASINDEX' name='MeasIndex'>
+      <Description>Zero based index within the file</Description>
+      <DisplayName>Measurement Index</DisplayName>
+      <Type>DtLong</Type>
+    </Attribute>
+  </Element>
+  <Element table='MQ' parent='42' base='AoMeasurementQuantity' name='MQ' id='43'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags index='yes' unique='yes'>129</Flags>
+    </Attribute>
+    <Attribute column='MEAS' name='Measurement'>
+      <DisplayName>Measurement</DisplayName>
+      <BaseName>measurement</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes'>129</Flags>
+      <RefId>42</RefId>
+    </Attribute>
+    <Attribute column='DATA_TYPE' name='DataType'>
+      <DisplayName>Data Type</DisplayName>
+      <BaseName>datatype</BaseName>
+      <Type enum='datatype_enum'>DtEnum</Type>
+      <Flags obligatory='yes'>2</Flags>
+    </Attribute>
+    <Attribute column='QUANTITY' name='Quantity'>
+      <DisplayName>Quantity</DisplayName>
+      <BaseName>quantity</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes'>128</Flags>
+      <RefId>53</RefId>
+    </Attribute>
+    <Attribute column='UNIT' name='Unit'>
+      <DisplayName>Unit</DisplayName>
+      <BaseName>unit</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes'>128</Flags>
+      <RefId>10</RefId>
+    </Attribute>
+    <Attribute column='SAMPLES' name='Samples'>
+      <Description>Number of samples in this measurement</Description>
+      <DisplayName>Number of Samples</DisplayName>
+      <Type>DtLongLong</Type>
+    </Attribute>
+    <Attribute column='INDEPENDENT' name='Independent'>
+      <Description>Independent channel i.e. normally used on x-axis</Description>
+      <DisplayName>Independent Channel</DisplayName>
+      <Type>DtBoolean</Type>
+      <Flags obligatory='yes'>2</Flags>
+      <DefaultValue>0</DefaultValue>
+    </Attribute>
+  </Element>
+  <Element table='TESTFILE' parent='40' base='AoFile' name='TestFile' id='44'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='yes'>1</Flags>
+    </Attribute>
+    <Attribute column='FILE_LOCATION' name='FileLocation'>
+      <DisplayName>File Location</DisplayName>
+      <BaseName>ao_location</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+    <Attribute column='FILE_TYPE' name='FileType'>
+      <DisplayName>File Type</DisplayName>
+      <BaseName>ao_file_mimetype</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='FILE_SIZE' name='FileSize'>
+      <DisplayName>File Size</DisplayName>
+      <BaseName>ao_size</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+    <Attribute column='HASHTYPE' name='HashType'>
+      <DisplayName>Type of Hash Value</DisplayName>
+      <BaseName>ao_hash_algorithm</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+    <Attribute column='HASHVAL' name='HashValue'>
+      <DisplayName>Hash Value</DisplayName>
+      <BaseName>ao_hash_value</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+    <Attribute column='TEST' name='Test'>
+      <Description>Reference to test</Description>
+      <DisplayName>Test</DisplayName>
+      <BaseName>ao_file_parent</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='yes' index='yes' unique='yes'>131</Flags>
+      <RefId>40</RefId>
+    </Attribute>
+    <Attribute column='MODIFIED' name='Modified'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+  </Element>
+  <Element table='TESTOBJ' base='AoUnitUnderTest' name='TestObject' id='50'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='STORED' name='Stored'>
+      <DisplayName>Stored</DisplayName>
+      <BaseName>version_date</BaseName>
+      <Type>DtDate</Type>
+    </Attribute>
+  </Element>
+  <Element table='OBJPROP' parent='50' base='AoUnitUnderTestPart' name='ObjProp' id='51'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='yes'>1</Flags>
+    </Attribute>
+    <Attribute column='UUT' name='UnitUnderTest'>
+      <DisplayName>Unit Under Test</DisplayName>
+      <BaseName>parent_unit_under_test</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='yes' index='yes' unique='yes'>131</Flags>
+      <RefId>50</RefId>
+    </Attribute>
+    <Attribute column='DESCRIPTION' name='Description'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element table='METADATA' parent='51' base='AoUnitUnderTestPart' name='MetaData' id='52'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='PROP' name='Property'>
+      <Description>Propeerty value</Description>
+      <DisplayName>Property</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='UUTP' name='UnitUnderTestPart'>
+      <DisplayName>Unit Under Test Part</DisplayName>
+      <BaseName>parent_unit_under_test_part</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='yes' index='yes' unique='yes'>131</Flags>
+      <RefId>51</RefId>
+    </Attribute>
+    <Attribute column='MEASFILE' name='MeasFile'>
+      <Description>Reference to measurement file</Description>
+      <DisplayName>Measurement File</DisplayName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='yes' unique='yes'>3</Flags>
+      <RefId>41</RefId>
+    </Attribute>
+  </Element>
+  <Element table='QUANTITY' base='AoQuantity' name='GlobalName' id='53'>
+    <Attribute column='IID' name='Index'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags index='yes' unique='yes' auto='yes'>133</Flags>
+    </Attribute>
+    <Attribute column='NAME' name='Name'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='DESCRIPTION' name='Description'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='DATA_TYPE' name='DataType'>
+      <DisplayName>Data Type</DisplayName>
+      <BaseName>default_datatype</BaseName>
+      <Type enum='datatype_enum'>DtEnum</Type>
+      <Flags obligatory='yes'>2</Flags>
+    </Attribute>
+    <Attribute column='MQ_NAME' name='MqName'>
+      <DisplayName>Default MQ Project</DisplayName>
+      <BaseName>default_mq_name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute column='UNIT' name='Unit'>
+      <DisplayName>Unit</DisplayName>
+      <BaseName>default_unit</BaseName>
+      <Type>DtLongLong</Type>
+      <RefId>10</RefId>
+    </Attribute>
+    <Attribute column='MODIFIED' name='Modified'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+    <Attribute column='MODIFIED_BY' name='ModifiedBy'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='yes'>4</Flags>
+    </Attribute>
+  </Element>
+</OdsModel>
