@@ -18,6 +18,11 @@ IItem::IItem(const std::string &app_name)
 
 }
 
+IItem::IItem(const std::string &app_name, const std::string& item_name)
+: application_name_(app_name),
+  item_name_(item_name)    {
+}
+
 IItem::IItem(int64_t app_id)
     : application_id_(app_id) {
 }
@@ -89,9 +94,20 @@ void IItem::ItemId(int64_t index) {
   }
 }
 
+void IItem::Name(const std::string& item_name) {
+  item_name_ = item_name;
+  auto itr = std::ranges::find_if( attribute_list_, [] (const auto& attr) {
+    return IEquals(attr.BaseName(), "id");
+  });
+
+  if (itr != attribute_list_.end()) {
+    itr->Value(item_name);
+  }
+}
+
 std::string IItem::Name() const {
   const auto* name_col = GetBaseAttribute("name");
-  return name_col == nullptr ? std::string() : name_col->Value<std::string>();
+  return name_col == nullptr ? item_name_ : name_col->Value<std::string>();
 }
 
 uint64_t IItem::Created() const {

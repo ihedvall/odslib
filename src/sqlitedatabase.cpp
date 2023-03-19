@@ -2,6 +2,8 @@
  * Copyright 2021 Ingemar Hedvall
  * SPDX-License-Identifier: MIT
  */
+
+#include "sqlitedatabase.h"
 #include <filesystem>
 #include <sstream>
 #include <stdexcept>
@@ -10,12 +12,12 @@
 #include <string_view>
 #include <algorithm>
 
-#include "util/logstream.h"
-#include "util/stringutil.h"
-#include "util/timestamp.h"
+#include <util/logstream.h>
+#include <util/stringutil.h>
+#include <util/timestamp.h>
 #include "ods/databaseguard.h"
 #include "ods/baseattribute.h"
-#include "sqlitedatabase.h"
+
 #include "sqlitestatement.h"
 
 using namespace std::chrono_literals;
@@ -23,53 +25,6 @@ using namespace util::log;
 using namespace util::string;
 using namespace util::time;
 namespace {
-
-constexpr std::string_view kCreateSvcEnum = "CREATE TABLE IF NOT EXISTS SVCENUM ("
-  "ENUMID  INTEGER NOT NULL, "
-  "ENUMNAME TEXT NOT NULL, "
-  "ITEM INTEGER NOT NULL, "
-  "ITEMNAME TEXT, "
-  "LOCKED INTEGER ck_locked CHECK (LOCKED IN (0,1)) DEFAULT 1, "
-  "CONSTRAINT pk_svcenum PRIMARY KEY (ENUMID,ITEM) )";
-
-constexpr std::string_view kInsertSvcEnum = "INSERT OR REPLACE INTO SVCENUM ("
-  "ENUMID,ENUMNAME ,ITEM, ITEMNAME, LOCKED) VALUES (%lld,%Q, %lld,%Q, %d)";
-
-constexpr std::string_view kCreateSvcEnt = "CREATE TABLE IF NOT EXISTS SVCENT ("
-                                            "AID INTEGER pk_svcent PRIMARY KEY NOT NULL, "
-                                            "ANAME TEXT uq_svcent NOT NULL UNIQUE, "
-                                            "BID INTEGER NOT NULL, "
-                                            "DBTNAME TEXT, "
-                                            "SECURITY INTEGER DEFAULT 0, "
-                                            "DESC TEXT)";
-
-constexpr std::string_view kInsertSvcEnt = "INSERT OR REPLACE INTO SVCENT ("
-          "AID, ANAME ,BID ,DBTNAME, SECURITY, DESC) VALUES (%lld, %Q, %d, %Q, %lld, %Q)";
-
-constexpr std::string_view kCreateSvcAttr = "CREATE TABLE IF NOT EXISTS SVCATTR ("
-              "AID INTEGER NOT NULL, "
-              "ATTRNR INTEGER, "
-              "AANAME TEXT NOT NULL, "
-              "BANAME TEXT, "
-              "FAID INTEGER, "
-              "FUNIT INTEGER, "
-              "ADTYPE INTEGER, "
-              "AFLEN INTEGER, "
-              "DBCNAME TEXT, "
-              "ACLREF INTEGER DEFAULT 0, "
-              "INVNAME TEXT, "
-              "FLAG INTEGER, "
-              "ENUMNAME TEXT, "
-              "DESC TEXT, "
-              "DISPNAME TEXT, "
-              "NOFDEC INTEGER, "
-              "DEFVALUE TEXT, "
-              "CONSTRAINT pk_svcattr PRIMARY KEY (AID,AANAME))";
-
-constexpr std::string_view kInsertSvcAttr = "INSERT OR REPLACE INTO SVCATTR ("
- "AID,ATTRNR,AANAME,BANAME,FAID,FUNIT,ADTYPE,AFLEN,DBCNAME,ACLREF,INVNAME,FLAG,ENUMNAME,DESC,DISPNAME,NOFDEC,DEFVALUE) "
- "VALUES (%lld, %lld, %Q, %Q, %s, %s, %d, %d, %Q, %lld, %Q, %d, %Q, %Q, %Q, %d, %Q)";
-
 
 int BusyHandler(void* user, int nof_locks) {
   if (nof_locks < 1000) {
@@ -79,117 +34,14 @@ int BusyHandler(void* user, int nof_locks) {
   return 0;
 }
 
-std::string DataTypeToDbString(ods::DataType type) {
-  switch (type) {
-    case ods::DataType::DtShort:
-    case ods::DataType::DtBoolean:
-    case ods::DataType::DtByte:
-    case ods::DataType::DtLong:
-    case ods::DataType::DtLongLong:
-    case ods::DataType::DtId:
-    case ods::DataType::DtEnum:
-      return "INTEGER";
 
-    case ods::DataType::DtDouble:
-    case ods::DataType::DtFloat:
-      return "REAL";
-
-    case ods::DataType::DtByteString:
-    case ods::DataType::DtBlob:
-      return "BLOB";
-
-    default:break;
-  }
-  return "TEXT";
-}
-
-bool IsDataTypeString(ods::DataType type) {
-  return DataTypeToDbString(type) == "TEXT";
-}
-
-std::string MakeCreateTableSql(const ods::IModel& model, const ods::ITable& table) {
-  const auto& column_list = table.Columns();
-  const auto unique_list = table.MakeUniqueList();
-
-  std::ostringstream sql;
-  sql << "CREATE TABLE IF NOT EXISTS " << table.DatabaseName() << " (";
-  // Add primary key first (always the id column
-  for (const auto& iid : column_list) {
-    if (iid.DatabaseName().empty() || !IEquals(iid.BaseName(), "id")) {
-      continue;
-    }
-    sql << iid.DatabaseName() << " INTEGER PRIMARY KEY AUTOINCREMENT";
-    break;
-  }
-
-  // Add the other columns
-  for (const auto& column : column_list) {
-
-    if (column.DatabaseName().empty() || IEquals(column.BaseName(), "id")) {
-      continue;
-    }
-    sql << "," << std::endl;
-    sql << column.DatabaseName() << " " << DataTypeToDbString(column.DataType());
-    if (column.Obligatory()) {
-      sql << " NOT NULL";
-    }
-
-    if (column.Unique() && unique_list.size() <= 1) {
-      sql << " UNIQUE";
-    }
-
-    if (!column.DefaultValue().empty()) {
-      sql << " DEFAULT ";
-      if (IsDataTypeString(column.DataType())) {
-        auto* temp = sqlite3_mprintf( "%Q", column.DefaultValue().c_str());
-        sql << temp;
-        sqlite3_free(temp);
-      } else {
-        sql << column.DefaultValue();
-      }
-    }
-
-    if (!column.CaseSensitive() && column.Unique() && IsDataTypeString(column.DataType()) ) {
-      sql << " COLLATE NOCASE";
-    }
-
-    const auto* ref_table = column.ReferenceId() > 0 ? model.GetTable(column.ReferenceId()) : nullptr;
-    if (ref_table != nullptr ) {
-      sql << " REFERENCES " << ref_table->DatabaseName();
-      if (!column.ReferenceName().empty()) {
-        sql << "(" << column.ReferenceName() << ")";
-      }
-      if (column.Obligatory()) {
-        sql << " ON DELETE CASCADE";
-      } else {
-        sql << " ON DELETE SET NULL";
-      }
-    }
-  }
-
-  // Done with the individual columns. Now it's time for unique constraint
-  if (unique_list.size() > 1) {
-    sql << ", CONSTRAINT UQ_" << table.DatabaseName() << " UNIQUE(";
-    for(size_t unique = 0; unique < unique_list.size(); ++unique) {
-      const auto& column = unique_list[unique];
-      if (unique > 0) {
-        sql << ",";
-      }
-      sql << column.DatabaseName();
-    }
-    sql << ")";
-  }
-
-  sql << ")";
-
-  return sql.str();
-}
 
 } // end namespace
 
 namespace ods::detail {
 
 SqliteDatabase::SqliteDatabase(const std::string &filename) {
+  DatabaseType(DbType::TypeSqlite);
   FileName(filename);
 }
 
@@ -201,17 +53,17 @@ bool SqliteDatabase::Open() {
   bool open = false;
   try {
     if (database_ == nullptr) {
-      if (!std::filesystem::exists(filename_) ) {
+      if (!std::filesystem::exists(FileName()) ) {
         std::ostringstream err;
-        err << "Database file does not exist. File: " << filename_;
+        err << "Database file does not exist. File: " << FileName();
         throw std::runtime_error(err.str());
       }
 
       int open3;
       size_t locks = 0;
-      for (open3 = sqlite3_open_v2(filename_.c_str(), &database_, SQLITE_OPEN_READWRITE, nullptr);
+      for (open3 = sqlite3_open_v2(FileName().c_str(), &database_, SQLITE_OPEN_READWRITE, nullptr);
            open3 == SQLITE_BUSY && locks < 1000;
-           open3 = sqlite3_open(filename_.c_str(), &database_) ) {
+           open3 = sqlite3_open(FileName().c_str(), &database_) ) {
           std::this_thread::sleep_for(10ms);
       }
 
@@ -220,9 +72,10 @@ bool SqliteDatabase::Open() {
           const auto error = sqlite3_errmsg(database_);
           sqlite3_close_v2(database_);
           database_ = nullptr;
-          LOG_ERROR() << "Failed to open the database. Error: " << error << ", File: " << filename_;
+          LOG_ERROR() << "Failed to open the database. Error: " << error
+                      << ", File: " << FileName();
         } else {
-          LOG_ERROR() << "Failed to open the database. File: " << filename_;
+          LOG_ERROR() << "Failed to open the database. File: " << FileName();
         }
       }
     }
@@ -230,9 +83,11 @@ bool SqliteDatabase::Open() {
     if (database_ != nullptr) {
       sqlite3_busy_handler(database_,BusyHandler, this);
       if (listen_ && listen_->IsActive()) {
-        sqlite3_trace_v2(database_, SQLITE_TRACE_STMT | SQLITE_TRACE_PROFILE | SQLITE_TRACE_ROW | SQLITE_TRACE_CLOSE,
+        sqlite3_trace_v2(database_, SQLITE_TRACE_STMT | SQLITE_TRACE_PROFILE
+                                        | SQLITE_TRACE_ROW | SQLITE_TRACE_CLOSE,
                          TraceCallback, this);
-        listen_->ListenTextEx(util::time::TimeStampToNs(), Name(), "Open database.");
+        listen_->ListenTextEx(util::time::TimeStampToNs(), Name(),
+                              "Open database.");
       } else {
         sqlite3_trace_v2(database_, 0, nullptr, nullptr);
       }
@@ -250,23 +105,27 @@ bool SqliteDatabase::Open() {
 }
 
 bool SqliteDatabase::OpenEx(int flags) {
-  const auto open3 = sqlite3_open_v2(filename_.c_str(), &database_, flags, nullptr);
+  const auto open3 = sqlite3_open_v2(FileName().c_str(), &database_, flags,
+                                     nullptr);
   if (open3 != SQLITE_OK) {
     if (database_ != nullptr) {
       const auto error = sqlite3_errmsg(database_);
       sqlite3_close_v2(database_);
       database_ = nullptr;
-      LOG_ERROR() << "Failed to open the database. Error: " << error << ", File: " << filename_;
+      LOG_ERROR() << "Failed to open the database. Error: " << error
+                  << ", File: " << FileName();
     } else {
-      LOG_ERROR() << "Failed to open the database. File: " << filename_;
+      LOG_ERROR() << "Failed to open the database. File: " << FileName();
     }
   }
   if (database_ != nullptr) {
     sqlite3_busy_handler(database_,BusyHandler, this);
     if (listen_ && listen_->IsActive()) {
-      sqlite3_trace_v2(database_, SQLITE_TRACE_STMT | SQLITE_TRACE_PROFILE | SQLITE_TRACE_ROW | SQLITE_TRACE_CLOSE,
+      sqlite3_trace_v2(database_, SQLITE_TRACE_STMT | SQLITE_TRACE_PROFILE
+                                      | SQLITE_TRACE_ROW | SQLITE_TRACE_CLOSE,
                        TraceCallback, this);
-      listen_->ListenTextEx(util::time::TimeStampToNs(), Name(), "OpenEx database.");
+      listen_->ListenTextEx(util::time::TimeStampToNs(), Name(),
+                            "OpenEx database.");
     } else {
       sqlite3_trace_v2(database_, 0, nullptr, nullptr);
     }
@@ -292,7 +151,8 @@ bool SqliteDatabase::Close(bool commit) {
 
   const auto close = sqlite3_close_v2(database_);
   if (close != SQLITE_OK && database_ != nullptr) {
-    LOG_ERROR() << "Failed to close the database. Error: " << sqlite3_errmsg(database_) << ", File: " << filename_;
+    LOG_ERROR() << "Failed to close the database. Error: "
+                << sqlite3_errmsg(database_) << ", File: " << FileName();
   }
   database_ = nullptr;
   return close == SQLITE_OK;
@@ -302,12 +162,36 @@ bool SqliteDatabase::IsOpen() const {
   return database_ != nullptr;
 }
 
-void SqliteDatabase::ExecuteSql(const std::string &sql) {
+int SqliteDatabase::ExecCallback(void *object, int rows, char **value_list,
+                                 char **column_list) {
+  auto* database = reinterpret_cast<SqliteDatabase*>(object);
+  if (database == nullptr) {
+    return 0;
+  }
+  for (int row = 0; row < rows; ++row) {
+    if (value_list == nullptr || column_list == nullptr) {
+      return 0;
+    }
+    const auto* value = value_list[row];
+    if (value == nullptr) {
+      continue;
+    }
+    try {
+      auto temp = std::stoll(value);
+      database->exec_result_ += temp;
+    } catch (const std::exception&) {}
+  }
+  return 0;
+}
+
+int64_t SqliteDatabase::ExecuteSql(const std::string &sql) {
   if (database_ == nullptr) {
     throw std::runtime_error("Database not open");
   }
+  exec_result_ = 0;
   char* error = nullptr;
-  const auto exec = sqlite3_exec(database_, sql.c_str(), nullptr, nullptr, &error);
+  const auto exec = sqlite3_exec(database_, sql.c_str(), ExecCallback, this,
+                                 &error);
   if (error != nullptr) {
     std::ostringstream err;
     err << "SQL Execute error. Error: " << error << ", SQL:" << sql;
@@ -315,239 +199,77 @@ void SqliteDatabase::ExecuteSql(const std::string &sql) {
     LOG_ERROR() << err.str();
     throw std::runtime_error(err.str());
   }
+  return exec_result_;
 }
 
 sqlite3 *SqliteDatabase::Sqlite3() {
   return database_;
 }
 
-const std::string &SqliteDatabase::FileName() const {
-  return filename_;
-}
+
 
 void SqliteDatabase::FileName(const std::string &filename) {
+
   // Seems that the SQLITE is sensible about the slashes
   try {
     std::filesystem::path file(filename);
     file.make_preferred();
-    filename_ = file.string();
+    ConnectionInfo(file.string());
+    if (Name().empty()) {
+      Name(file.stem().string());
+    }
   } catch (const std::exception& error) {
     LOG_ERROR() << "File name path error. Error: " << error.what()
       << ", File Name: " << filename;
   }
 }
 
-bool SqliteDatabase::Create(IModel &model) {
+bool SqliteDatabase::Create(const IModel &model) {
   const auto open = OpenEx(); // Special open that creates the file
   if (!open) {
-    LOG_ERROR() << "Failed to create an empty SQLITE database. DB: " << FileName();
+    LOG_ERROR() << "Failed to create an empty SQLITE database. DB: "
+                << FileName();
     return false;
   }
   const auto svc_enum = CreateSvcEnumTable(model);
   const auto svc_ent = CreateSvcEntTable(model);
   const auto svc_attr = CreateSvcAttrTable(model);
+
   const auto tables = CreateTables(model);
   const auto units = InsertModelUnits(model);
   const auto env = InsertModelEnvironment(model);
+
   const auto close = Close(true);
   return close && svc_enum && svc_ent && svc_attr && tables && units && env;
 }
 
-bool SqliteDatabase::ReadModel(IModel &model) {
-  DatabaseGuard guard(*this);
-  if (!guard.IsOk()) {
-    LOG_ERROR() << "Failed to open the SQLITE database. DB: " << FileName();
-    return false;
-  }
-
-  const auto svc_enum = ReadSvcEnumTable(model);
-  const auto svc_ent = ReadSvcEntTable(model);
-  const auto svc_attr = ReadSvcAttrTable(model);
-  const auto units = FixUnitStrings(model);
-  const auto env = FetchModelEnvironment(model);
-
-  return svc_enum && svc_ent && svc_attr && units && env;
-}
-
-bool SqliteDatabase::CreateSvcEnumTable(IModel &model) {
-  try {
-    ExecuteSql(kCreateSvcEnum.data());
-    auto& enum_list = model.Enums();
-
-    // Insert enumerates
-    for (auto& itr : enum_list) {
-      auto& obj = itr.second;
-      if (obj.EnumId() <= 0) {
-        obj.EnumId(model.FindNextEnumId());
-      }
-      if (obj.Items().empty()) {
-        obj.AddItem(0,"");
-      }
-      for ( const auto& item : obj.Items()) {
-        auto* insert = sqlite3_mprintf( kInsertSvcEnum.data(),obj.EnumId(), obj.EnumName().c_str(),
-                        item.first, item.second.c_str(), obj.Locked() ? 1 : 0 );
-        const std::string sql = insert;
-        sqlite3_free(insert);
-        ExecuteSql(sql);
-      }
-    }
-  } catch (std::exception& err) {
-    LOG_ERROR() << "Failed to create the SVCENUM table. Error: " << err.what();
-    return false;
-  }
-  return true;
-}
 
 
-
-bool SqliteDatabase::CreateSvcEntTable(const IModel &model) {
-  try {
-    ExecuteSql(kCreateSvcEnt.data());
-    auto table_list = model.AllTables();
-
-    // Insert tables
-    for (const auto* table : table_list) {
-      if (table == nullptr) {
-        continue;
-      }
-      auto* insert = sqlite3_mprintf( kInsertSvcEnt.data(),
-                                      table->ApplicationId(),
-                                      table->ApplicationName().c_str(),
-                                      static_cast<int>(table->BaseId()),
-                                      table->DatabaseName().empty() ? nullptr : table->DatabaseName().c_str(),
-                                      table->SecurityMode(),
-                                      table->Description().empty() ? nullptr : table->Description().c_str() );
-      const std::string sql = insert;
-      sqlite3_free(insert);
-      ExecuteSql(sql);
-    }
-  } catch (std::exception& err) {
-    LOG_ERROR() << "Failed to create the SVCENT table. Error: " << err.what();
-    return false;
-  }
-
-  return true;
-}
-
-bool SqliteDatabase::CreateSvcAttrTable(const IModel &model) {
-  try {
-    ExecuteSql(kCreateSvcAttr.data());
-    const auto table_list = model.AllTables();
-
-    // Insert enumerates
-    for (const auto* table : table_list) {
-      if (table == nullptr) {
-        continue;
-      }
-      auto* tab = const_cast<ITable*>(table);
-      if (tab == nullptr) {
-        continue;
-      }
-      auto& column_list = tab->Columns();
-      for (auto& column : column_list) {
-        if (column.ColumnId() <= 0) {
-          column.ColumnId(tab->FindNextColumnId());
-        }
-        if (column.TableId() != tab->ApplicationId()) {
-          column.TableId(tab->ApplicationId());
-        }
-        auto* insert = sqlite3_mprintf( kInsertSvcAttr.data(),
-              column.TableId(),
-              column.ColumnId(),
-              column.ApplicationName().c_str(),
-              column.BaseName().empty() ? nullptr : column.BaseName().c_str(),
-              column.ReferenceId() > 0 ? std::to_string(column.ReferenceId()).c_str() : "NULL",
-              column.UnitIndex() > 0 ? std::to_string(column.UnitIndex()).c_str() : "NULL",
-              static_cast<int>(column.DataType()),
-              static_cast<int>(column.NofDecimals()),
-              column.DatabaseName().c_str(),
-              column.AclIndex(),
-              column.ReferenceName().empty() ? nullptr : column.ReferenceName().c_str(),
-              static_cast<int>(column.Flags()),
-              column.EnumName().empty() ? nullptr : column.EnumName().c_str(),
-              column.Description().empty() ? nullptr : column.Description().c_str(),
-              column.DisplayName().empty() ? nullptr : column.DisplayName().c_str(),
-              static_cast<int>(column.NofDecimals()),
-              column.DefaultValue().empty() ? nullptr : column.DefaultValue().c_str());
-        const std::string sql = insert;
-        sqlite3_free(insert);
-        ExecuteSql(sql);
-      }
-    }
-  } catch (std::exception& err) {
-    LOG_ERROR() << "Failed to create the SVCATTR table. Error: " << err.what();
-    return false;
-  }
-  return true;
-}
-
-bool SqliteDatabase::CreateTables(const IModel &model) {
-  try {
-
-    const auto table_list = model.AllTables();
-    for (const auto* table : table_list) {
-      if (table == nullptr) {
-        continue;
-      }
-      if (table->DatabaseName().empty() || table->Columns().empty()) {
-        continue;
-      }
-      // Create the table
-      const auto sql = MakeCreateTableSql(model, *table);
-      ExecuteSql(sql);
-
-      // Now create all indexes. This is a bit complicated as if all unique columns have an index, then
-      // a compound index is wanted but if only one of them then it is an ordinary index.
-      const auto unique_list = table->MakeUniqueList();
-      const auto unique_index = std::ranges::all_of(unique_list, [] (const auto& col) { return col.Index(); });
-      if (unique_index && !unique_list.empty()) {
-        std::ostringstream create_ix;
-        create_ix << "CREATE UNIQUE INDEX IF NOT EXISTS IX_" << table->DatabaseName();
-        for ( const auto& col1 : unique_list) {
-          create_ix << "_" << col1.DatabaseName();
-        }
-        create_ix << " ON " << table->DatabaseName() << "(";
-        for ( size_t col2 = 0; col2 < unique_list.size(); ++col2) {
-          if (col2 > 0) {
-            create_ix << ",";
-          }
-          create_ix << unique_list[col2].DatabaseName();
-        }
-        create_ix << ")";
-        ExecuteSql(create_ix.str());
-      }
-
-      const auto& column_list = table->Columns();
-      for (const auto& column : column_list) {
-        // Avoid primary key and no database columns
-        if (column.DatabaseName().empty() || IEquals(column.BaseName(), "id") || !column.Index()) {
-          continue;
-        }
-        if (column.Unique() && unique_index) { // Index added above
-          continue;
-        }
-        std::ostringstream create_ix;
-        create_ix << "CREATE INDEX IF NOT EXISTS IX_" << table->DatabaseName() << "_" << column.DatabaseName()
-            << " ON " << table->DatabaseName() << "(" << column.DatabaseName() << ")";
-        ExecuteSql(create_ix.str());
-      }
-    }
-  } catch (std::exception& err) {
-    LOG_ERROR() << "Failed to create the DB tables. Error: " << err.what();
-    return false;
-  }
-
-  return true;
-}
-
-void SqliteDatabase::Insert(const ITable &table, IItem &row) {
+void SqliteDatabase::Insert(const ITable &table, IItem &row, const SqlFilter& filter) {
   if (!IsOpen()) {
     throw std::runtime_error("The database is not open");
   }
 
   const auto &column_list = table.Columns();
-  if (table.DatabaseName().empty() || column_list.empty()) {
+  const auto* column_id = table.GetColumnByBaseName("id");
+  if (table.DatabaseName().empty() || column_list.empty() || column_id == nullptr) {
     return;
+  }
+
+  // If filter is in use, do a select first and check if the
+  // item already exist. If so, do not insert a new item.
+  if (!filter.IsEmpty()) {
+    std::ostringstream select_sql;
+    select_sql << "SELECT " << column_id->DatabaseName() << " FROM "
+               << table.DatabaseName()
+               << " " << filter.GetWhereStatement();
+
+    SqliteStatement select(database_, select_sql.str());
+    if (select.Step()) {
+      const auto index = select.Value<int64_t>(0);
+      row.ItemId(index);
+      return;
+    }
   }
 
   std::ostringstream insert;
@@ -577,13 +299,15 @@ void SqliteDatabase::Insert(const ITable &table, IItem &row) {
       first2 = false;
     }
     const auto *item = row.GetAttribute(col2.ApplicationName());
-    if (item != nullptr) {
-      if (col2.IsString()) {
+    if (item != nullptr) { // The attribute has been set
+      if (col2.DataType() == DataType::DtDate) {
+        insert << MakeDateValue(*item);
+      } else if (col2.IsString()) {
         const auto val = item->Value<std::string>();
         if (val.empty() && !col2.Obligatory() && col2.DefaultValue().empty()) {
           insert << "NULL";
         } else {
-          auto *value = sqlite3_mprintf("%Q", item->Value<std::string>().c_str());
+          auto *value = sqlite3_mprintf("%Q", val.c_str());
           insert << value;
           sqlite3_free(value);
         }
@@ -592,6 +316,10 @@ void SqliteDatabase::Insert(const ITable &table, IItem &row) {
       } else {
         insert << item->Value<std::string>();
       }
+    } else if (IEquals(col2.BaseName(),"ao_created") || IEquals(col2.BaseName(), "version_date")) {
+      // If these columns isn't set, then set them to 'now'. Normally are these set to auto generated
+      // Note that 'ao_last_modified' is set to null at insert and set at update.
+      insert << "datetime('now')";
     } else if (!col2.DefaultValue().empty()) {
       if (col2.IsString()) {
         auto *value = sqlite3_mprintf("%Q", col2.DefaultValue().c_str());
@@ -622,172 +350,58 @@ void SqliteDatabase::Update(const ITable &table, IItem &row, const SqlFilter& fi
   if (!IsOpen()) {
     throw std::runtime_error("The database is not open");
   }
+
   const auto &column_list = table.Columns();
-  const auto &attr_list = row.AttributeList();
-  if (table.DatabaseName().empty() || column_list.empty() || attr_list.empty()) {
+  if (table.DatabaseName().empty() || column_list.empty()) {
     return;
   }
 
   std::ostringstream update;
   update << "UPDATE " << table.DatabaseName() << " SET ";
   bool first = true;
-  for (const auto &attr: attr_list) {
-    const auto* column = table.GetColumnByName(attr.Name());
-    if (column == nullptr || column->DatabaseName().empty() ||
-       IEquals(column->BaseName(), "id")) {
+  for (const auto &col: column_list) {
+    if (col.DatabaseName().empty() || IEquals(col.BaseName(), "id")) {
       continue;
     }
 
-    if (!first) {
-      update << ",";
-    } else {
-      first = false;
-    }
-    update << column->DatabaseName() << "=";
-    const std::string val = attr.Value<std::string>();
-    if (column->IsString()) {
-      if (val.empty() && !column->Obligatory() && column->DefaultValue().empty()) {
-        update << "NULL";
+    const auto *attr = row.GetAttribute(col.ApplicationName());
+    if (attr != nullptr) {
+      // Set the attribute value
+      if (!first) {
+        update << ",";
       } else {
-        auto *value = sqlite3_mprintf("%Q", val.c_str());
-        update << value;
-        sqlite3_free(value);
+        first = false;
       }
-    } else {
-      update << val;
-    }
-    update << " " << filter.GetWhereStatement();
-  }
-  ExecuteSql(update.str());
-}
+      update << col.DatabaseName() << "=";
 
-void SqliteDatabase::Delete(const ITable &table, const SqlFilter& filter) {
-  if (!IsOpen()) {
-    throw std::runtime_error("The database is not open");
-  }
-
-  if (filter.IsEmpty()) {
-    // If filter is empty the entire table is deleted. Treat as error
-    throw std::runtime_error("There is no where statement in the delete");
-  }
-
-  std::ostringstream del;
-  del << "DELETE FROM " << table.DatabaseName() << " " << filter.GetWhereStatement();
-  ExecuteSql(del.str());
-}
-
-bool SqliteDatabase::InsertModelUnits(const IModel &model) {
-  const auto* unit_table = model.GetBaseId(BaseId::AoUnit);
-  if (unit_table == nullptr) {
-    LOG_DEBUG() << "No unit table in DB. Assume no model units";
-    return true;
-  }
-  const auto* name_column = unit_table->GetColumnByBaseName("name");
-  if (name_column == nullptr) {
-    LOG_ERROR() << "No name column in the unit table. Table: " << unit_table->DatabaseName();
-    return false;
-  }
-
-  // Need a temporary list of inserted units
-  std::unordered_map<std::string, int64_t> inserted_list;
-  const auto table_list = model.AllTables();
-  for (const auto* tab : table_list) {
-    if (tab == nullptr) {
-      continue;
-    }
-    auto* table = const_cast<ITable*>(tab);
-    if (table == nullptr) {
-      continue;
-    }
-    auto& column_list = table->Columns();
-    for (auto& column : column_list) {
-      if (column.Unit().empty()) {
-        continue;
-      }
-
-      try {
-        const auto exist = inserted_list.find(column.Unit());
-        if (exist != inserted_list.cend()) {
-          column.UnitIndex(exist->second);
+      const std::string val = attr->Value<std::string>();
+      if (col.DataType() == DataType::DtDate) {
+        update << MakeDateValue(*attr);
+      } else if (col.IsString()) {
+        if (val.empty() && !col.Obligatory()) {
+          update << "NULL";
         } else {
-          IItem row(unit_table->ApplicationId());
-          row.AppendAttribute({name_column->ApplicationName(), column.Unit()});
-          Insert(*unit_table, row);
-          column.UnitIndex(row.ItemId());
-          inserted_list.insert({column.Unit(), column.UnitIndex()});
+          auto *value = sqlite3_mprintf("%Q", val.c_str());
+          update << value;
+          sqlite3_free(value);
         }
-        std::ostringstream update;
-        update << "UPDATE SVCATTR SET FUNIT = " << column.UnitIndex()
-               << " WHERE AID = " << table->ApplicationId()
-               << " AND ATTRNR = " << column.ColumnId();
-        ExecuteSql(update.str());
-      } catch (const std::exception& err) {
-        LOG_ERROR() << "Failed to insert model units";
-        return false;
+      } else {
+        update << val;
       }
+    } else if (IEquals(col.BaseName(), "ao_last_modified") ||
+               IEquals(col.BaseName(), "version_date")) {
+        // Automatic fill with current date and time
+      if (!first) {
+        update << ",";
+      } else {
+        first = false;
+      }
+      update << col.DatabaseName() << "= datetime('now')";
     }
   }
-  return true;
-}
 
-bool SqliteDatabase::InsertModelEnvironment(const IModel &model) {
-  const auto* env_table = model.GetBaseId(BaseId::AoEnvironment);
-  if (env_table == nullptr) {
-    LOG_DEBUG() << "No environment table in DB. Assume no model units";
-    return true;
-  }
-
-  const auto* name_column = env_table->GetColumnByBaseName("name");
-  if (name_column == nullptr || env_table->DatabaseName().empty()) {
-    LOG_DEBUG() << "No environment table in DB.";
-    return true;
-  }
-
-  IItem env(env_table->ApplicationId());
-  env.AppendAttribute({name_column->ApplicationName(),model.Name()});
-
-  const auto* desc = env_table->GetColumnByBaseName("description");
-  if (desc != nullptr) {
-    env.AppendAttribute({desc->ApplicationName(),model.Description()});
-  }
-
-  const auto* version = env_table->GetColumnByBaseName("version");
-  if (version != nullptr) {
-    env.AppendAttribute({version->ApplicationName(),model.Version()});
-  }
-
-  const auto* created = env_table->GetColumnByBaseName("ao_created");
-  if (created != nullptr) {
-    env.AppendAttribute({created->ApplicationName(),NsToIsoTime(model.Created(), 0)});
-  }
-
-  const auto* created_by = env_table->GetColumnByBaseName("ao_created_by");
-  if (created_by != nullptr) {
-    env.AppendAttribute({created_by->ApplicationName(),model.CreatedBy()});
-  }
-
-  const auto* modified = env_table->GetColumnByBaseName("ao_last_modified");
-  if (modified != nullptr) {
-    env.AppendAttribute({modified->ApplicationName(),NsToIsoTime(model.Modified(), 0)});
-  }
-
-  const auto* modified_by = env_table->GetColumnByBaseName("ao_last_modified_by");
-  if (modified_by != nullptr) {
-    env.AppendAttribute({modified_by->ApplicationName(),model.ModifiedBy()});
-  }
-
-  const auto* base_version = env_table->GetColumnByBaseName("base_model_version");
-  if (base_version != nullptr) {
-    env.AppendAttribute({base_version->ApplicationName(),model.BaseVersion()});
-  }
-
-  try {
-    Insert(*env_table, env);
-  } catch (const std::exception& err) {
-    LOG_ERROR() << "Failed to insert model environment";
-    return false;
-  }
-  return true;
+  update << " " << filter.GetWhereStatement();
+  ExecuteSql(update.str());
 }
 
 bool SqliteDatabase::ReadSvcEnumTable(IModel &model) {
@@ -936,37 +550,9 @@ bool SqliteDatabase::ReadSvcAttrTable(IModel &model) {
   return true;
 }
 
-bool SqliteDatabase::FixUnitStrings(const IModel &model) {
-  try {
-    const auto* unit_table = model.GetBaseId(BaseId::AoUnit);
-    if (unit_table == nullptr) {
-      return true;
-    }
-    IdNameMap unit_list;
-    FetchNameMap(*unit_table, unit_list,SqlFilter());
-    const auto table_list = model.AllTables();
-    for (const auto* tab : table_list) {
-      auto* table = tab == nullptr ? nullptr : const_cast<ITable*>(tab);
-      if (table == nullptr) {
-        continue;
-      }
-      auto& column_list = table->Columns();
-      for (auto& column : column_list) {
-        if (column.UnitIndex() > 0) {
-          const auto itr = unit_list.find(column.UnitIndex());
-          if (itr != unit_list.cend()) {
-            column.Unit(itr->second);
-          }
-        }
-      }
-    }
-  } catch (const std::exception& err) {
-    LOG_ERROR() << "Failed to fix the model units strings.";
-    return false;
-  }
 
-  return true;
-}
+
+
 
 void SqliteDatabase::FetchNameMap(const ITable &table, IdNameMap& dest_list, const SqlFilter& filter) {
   if (!IsOpen()) {
@@ -1171,13 +757,67 @@ int SqliteDatabase::TraceCallback(unsigned int mask, void *context, void *arg1, 
   return 0;
 }
 
-std::string SqliteDatabase::Name() const{
+void SqliteDatabase::Vacuum() {
+  if (database_ != nullptr) {
+    throw std::runtime_error("The database was open when vacuum the database. Invalid use of function.");
+  }
+
+  // Special handling of open and close of the database as the function have some requirements on that
+  // functionality.
+  const auto open = sqlite3_open_v2(FileName().c_str(), &database_, SQLITE_OPEN_READWRITE, nullptr);
+  if (open != SQLITE_OK || database_ == nullptr) {
+    std::ostringstream err;
+    if (database_ != nullptr) {
+      const auto error = sqlite3_errmsg(database_);
+      sqlite3_close_v2(database_);
+      database_ = nullptr;
+      err << "Failed to open the database. Error: " << error << ", File: "
+          << FileName();
+    } else {
+      err << "Failed to open the database. File: " << FileName();
+    }
+    throw std::runtime_error(err.str());
+  }
+
   try {
-    std::filesystem::path fullname(filename_);
-    return fullname.stem().string();
-  } catch (const std::exception&) {}
-  return {};
+    ExecuteSql("VACUUM");
+  } catch (const std::exception& err) {
+    sqlite3_close_v2(database_);
+    database_ = nullptr;
+    throw err;
+  }
+  sqlite3_close_v2(database_);
+  database_ = nullptr;
 }
 
-} // end namespace
+std::string SqliteDatabase::DataTypeToDbString(DataType type) {
+  switch (type) {
+  case ods::DataType::DtShort:
+  case ods::DataType::DtBoolean:
+  case ods::DataType::DtByte:
+  case ods::DataType::DtLong:
+  case ods::DataType::DtLongLong:
+  case ods::DataType::DtId:
+  case ods::DataType::DtEnum:
+    return "INTEGER";
+
+  case ods::DataType::DtDouble:
+  case ods::DataType::DtFloat:
+    return "REAL";
+
+  case ods::DataType::DtByteString:
+  case ods::DataType::DtBlob:
+    return "BLOB";
+
+  default:break;
+  }
+  return "TEXT";
+}
+
+bool SqliteDatabase::IsDataTypeString(DataType type) {
+  return DataTypeToDbString(type) == "TEXT";
+}
+
+
+} // end namespace ods
 

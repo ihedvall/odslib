@@ -165,9 +165,10 @@ struct EnvTypeDef {
   const std::string_view TypeName2; ///< Display text
 };
 
-constexpr std::array<EnvTypeDef,2> kEnvTypeList = {
+constexpr std::array<EnvTypeDef,3> kEnvTypeList = {
     EnvTypeDef{1, "Generic", "Generic ODS Environment"},
     EnvTypeDef{2, "TestDirectory", "Test Directory Environment"},
+    EnvTypeDef{2, "EventLogDb", "Event Log Database"},
 };
 
 

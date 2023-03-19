@@ -47,8 +47,6 @@ class ColumnDialog : public wxDialog {
   bool case_sensitive_ = false;
   bool index_ = false;
 
-
-
   bool ValidateColumn();
   wxDECLARE_EVENT_TABLE();
 };

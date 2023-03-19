@@ -18,7 +18,9 @@ class MainFrame : public wxDocMDIParentFrame {
   void OnUpdateAnyDoc(wxUpdateUIEvent &event);
   void OnImportAtfx(wxCommandEvent& event);
   void OnImportSqlite(wxCommandEvent& event);
+  void OnImportPostgres(wxCommandEvent& event);
   void OnCreateDbSqlite(wxCommandEvent& event);
+  void OnCreateDbPostgres(wxCommandEvent& event);
  wxDECLARE_EVENT_TABLE();
 };
 }

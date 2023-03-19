@@ -115,7 +115,8 @@ IEnum CreateDefaultEnum(const std::string& enum_name);
 enum class EnvironmentType : int {
   kTypeUnknown = 0,
   kTypeGeneric = 1,
-  kTypeTestDirectory = 2
+  kTypeTestDirectory = 2,
+  kTypeEventLogDb = 3
 };
 
 EnvironmentType TextToEnvType(const std::string& );

@@ -22,13 +22,13 @@ add_executable(odsconfig
         src/databasenamevalidator.cpp src/databasenamevalidator.h
         src/enumdialog.cpp src/enumdialog.h
         src/enumitemdialog.cpp src/enumitemdialog.h
-        src/appnamevalidator.cpp src/appnamevalidator.h)
+        src/appnamevalidator.cpp src/appnamevalidator.h src/postgresdialog.cpp src/postgresdialog.h)
 
 
 target_include_directories(odsconfig PRIVATE ${wxWidgets_INCLUDE_DIRS})
 target_include_directories(odsconfig  PRIVATE ${Boost_INCLUDE_DIRS})
 target_include_directories(odsconfig PRIVATE ${SQLite3_INCLUDE_DIRS})
-# target_include_directories(odsconfig PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../mdflib/include")
+target_include_directories(odsconfig PRIVATE  ${PostgreSQL_INCLUDE_DIRS})
 target_include_directories(odsconfig PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
 
 # target_include_directories(odsconfig PRIVATE "../../utillib/include")
@@ -52,11 +52,17 @@ target_link_libraries(odsconfig PRIVATE ${wxWidgets_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${Boost_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${ZLIB_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${SQLite3_LIBRARIES})
-#target_link_libraries(odsconfig PRIVATE ${OPENSSL_CRYPTO_LIBRARY} )
+target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpq.lib)
+target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgtypes.lib)
+target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgport.lib)
+target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgcommon.lib)
+target_link_libraries(odsconfig PRIVATE ${OPENSSL_LIBRARIES})
 
 if (WIN32)
 #target_link_libraries(odsconfig PRIVATE iconv )
 target_link_libraries(odsconfig PRIVATE bcrypt)
 target_link_libraries(odsconfig PRIVATE ws2_32)
+target_link_libraries(odsconfig PRIVATE secur32)
+target_link_libraries(odsconfig PRIVATE crypt32)
 #target_link_libraries(odsconfig PRIVATE wsock32)
 endif()

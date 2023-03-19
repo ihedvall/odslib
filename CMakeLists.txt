@@ -17,13 +17,16 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_DEBUG_POSTFIX d)
 
-include("script/boost.cmake")
-include("script/sqlite3.cmake")
-include("script/zlib.cmake")
-include("script/openssl.cmake")
-include("script/wxwidgets.cmake")
 include ("script/utillib.cmake")
 include ("script/mdflib.cmake")
+include("script/boost.cmake")
+include("script/sqlite3.cmake")
+include("script/postgresql.cmake")
+#include("script/zlib.cmake")
+include("script/openssl.cmake")
+include("script/wxwidgets.cmake")
+
+
 include("script/googletest.cmake")
 include("script/doxygen.cmake")
 
@@ -45,12 +48,16 @@ add_library(ods STATIC
         src/ienvironment.cpp include/ods/ienvironment.h
         src/testdirectory.cpp src/testdirectory.h
         src/ienvironmentcreator.cpp include/ods/ienvironmentcreator.h
-        src/sqlfilter.cpp include/ods/sqlfilter.h)
+        src/sqlfilter.cpp include/ods/sqlfilter.h
+        src/eventlogdb.cpp src/eventlogdb.h
+        src/postgresdb.cpp src/postgresdb.h
+        src/postgresstatement.cpp src/postgresstatement.h)
 
 
 
 target_include_directories(ods PRIVATE ${Boost_INCLUDE_DIRS})
 target_include_directories(ods PRIVATE ${SQLite3_INCLUDE_DIRS})
+target_include_directories(ods PRIVATE ${PostgreSQL_INCLUDE_DIRS})
 target_include_directories(ods PRIVATE ${utillib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${mdflib_SOURCE_DIR}/include)
 
@@ -76,6 +83,7 @@ install(TARGETS ods
 
 if (wxWidgets_FOUND )
     add_subdirectory(odsconfigurator)
+    add_subdirectory(reportexplorer)
 endif()
 
 if (GTEST_FOUND)

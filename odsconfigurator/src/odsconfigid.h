@@ -48,4 +48,7 @@ constexpr wxWindowID kIdImportSqlite = 45;
 constexpr wxWindowID kIdCreateDbSqlite = 46;
 constexpr wxWindowID kIdIndexFlag = 47;
 constexpr wxWindowID kIdNoIndexFlag = 48;
+constexpr wxWindowID kIdCreateDbPostgres = 49;
+constexpr wxWindowID kIdImportPostgres = 50;
+constexpr wxWindowID kIdTestConnection = 51;
 }

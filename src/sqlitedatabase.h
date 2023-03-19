@@ -6,7 +6,7 @@
 
 #include <string>
 #include <sqlite3.h>
-#include <util/ilisten.h>
+#include <util/utilfactory.h>
 #include "ods/idatabase.h"
 #include "ods/imodel.h"
 #include "ods/iitem.h"
@@ -21,50 +21,52 @@ class SqliteDatabase : public IDatabase {
   explicit SqliteDatabase(const std::string& filename);
   ~SqliteDatabase() override;
 
-  [[nodiscard]] const std::string& FileName() const;
+  [[nodiscard]] const std::string& FileName() const {return ConnectionInfo();}
   void FileName(const std::string& filename);
-
-  [[nodiscard]] std::string Name() const;
 
   bool Open() override;
   [[nodiscard]] bool OpenEx(int flags = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE);
   bool Close(bool commit) override;
   [[nodiscard]] bool IsOpen() const override;
 
-  [[nodiscard]] bool Create(IModel& model) override;
-  [[nodiscard]] bool ReadModel(IModel& model) override;
+  [[nodiscard]] bool Create(const IModel& model) override;
 
-  void Insert(const ITable& table, IItem& row) override;
+  void Insert(const ITable& table, IItem& row, const SqlFilter& filter) override;
   void Update(const ITable& table, IItem& row, const SqlFilter& filter) override;
-  void Delete(const ITable& table, const SqlFilter& filter) override;
-  void ExecuteSql(const std::string& sql) override;
-  void FetchNameMap(const ITable& table, IdNameMap &dest_list, const SqlFilter& filter) override;
-  void FetchItemList(const ITable& table, ItemList &dest_list, const SqlFilter& filter) override;
+
+  int64_t ExecuteSql(const std::string& sql) override;
+
+  void FetchNameMap(const ITable& table, IdNameMap &dest_list,
+                    const SqlFilter& filter) override;
+  void FetchItemList(const ITable& table, ItemList &dest_list,
+                     const SqlFilter& filter) override;
+
+  void Vacuum() override;
 
   sqlite3* Sqlite3();
+ protected:
+   [[nodiscard]] std::string DataTypeToDbString(DataType type) override;
+   [[nodiscard]] bool IsDataTypeString(DataType type) override;
 
  private:
-  std::string filename_;
+
   sqlite3* database_ = nullptr;
   bool transaction_ = false;
 
-  std::unique_ptr<util::log::IListen> listen_ = util::log::IListen::CreateListen("ListenProxy", "LISSQLITE");
+  std::unique_ptr<util::log::IListen> listen_ =
+      util::UtilFactory::CreateListen("ListenProxy", "LISSQLITE");
   size_t row_count_ = 0;
+  int64_t exec_result_ = 0; ///< Resulting value from an ExecuteSql
 
-  bool CreateSvcEnumTable(IModel &model);
-  bool CreateSvcEntTable(const IModel &model);
-  bool CreateSvcAttrTable(const IModel &model);
-  bool CreateTables(const IModel& model);
-  bool InsertModelUnits(const IModel& model);
-  bool InsertModelEnvironment(const IModel& model);
+  bool ReadSvcEnumTable(IModel& model) override;
+  bool ReadSvcEntTable(IModel& model) override;
+  bool ReadSvcAttrTable(IModel& model) override;
+  bool FetchModelEnvironment(IModel& model) override;
 
-  bool ReadSvcEnumTable(IModel& model);
-  bool ReadSvcEntTable(IModel& model);
-  bool ReadSvcAttrTable(IModel& model);
-  bool FixUnitStrings(const IModel& model);
-  bool FetchModelEnvironment(IModel& model);
-
-  static int TraceCallback(unsigned mask, void* context,  void* arg1, void* arg2);
+  static int TraceCallback(unsigned mask, void* context,  void* arg1,
+                           void* arg2);
+  static int ExecCallback(void* object, int rows, char** value_list,
+                          char** column_list);
 };
 
 } // end namespace

@@ -1,0 +1,379 @@
+﻿<?xml version='1.0' encoding='UTF-8' standalone='yes'?>
+<OdsModel>
+  <Version>2</Version>
+  <NAme>EventLogDB</NAme>
+  <ApplicationVersion>1.0</ApplicationVersion>
+  <Description>Database configuration for event log database</Description>
+  <CreatedBy>Ingemar Hedvall</CreatedBy>
+  <ModifiedBy/>
+  <BaseVersion>asam35</BaseVersion>
+  <Created>2022-07-05T08:41:19Z</Created>
+  <Modified>2022-07-05T08:41:19Z</Modified>
+  <SourceName/>
+  <SourceType/>
+  <SourceInfo/>
+  <EnumList>
+    <Enumerate name='datatype_enum' locked='true'>
+      <Item number='0' value='DT_UNKNOWN'/>
+      <Item number='1' value='DT_STRING'/>
+      <Item number='2' value='DT_SHORT'/>
+      <Item number='3' value='DT_FLOAT'/>
+      <Item number='4' value='DT_BOOLEAN'/>
+      <Item number='5' value='DT_BYTE'/>
+      <Item number='6' value='DT_LONG'/>
+      <Item number='7' value='DT_DOUBLE'/>
+      <Item number='8' value='DT_LONGLONG'/>
+      <Item number='9' value='DT_ID'/>
+      <Item number='10' value='DT_DATE'/>
+      <Item number='11' value='DT_BYTESTRING'/>
+      <Item number='12' value='DT_BLOB'/>
+      <Item number='13' value='DT_COMPLEX'/>
+      <Item number='14' value='DT_DCOMPLEX'/>
+      <Item number='28' value='DT_EXTERNALREF'/>
+      <Item number='30' value='DT_ENUM'/>
+    </Enumerate>
+    <Enumerate name='facility_code' locked='false'>
+      <Item number='0' value='Kernel'/>
+      <Item number='1' value='User Level'/>
+      <Item number='2' value='Mail'/>
+      <Item number='3' value='System Daemon'/>
+      <Item number='4' value='Security'/>
+      <Item number='5' value='Internal'/>
+      <Item number='6' value='Printer'/>
+      <Item number='7' value='Network'/>
+      <Item number='8' value='UUCP'/>
+      <Item number='9' value='Clock'/>
+      <Item number='10' value='Authorization'/>
+      <Item number='11' value='FTP'/>
+      <Item number='12' value='NTP'/>
+      <Item number='13' value='Log Audit'/>
+      <Item number='14' value='Log Alert'/>
+      <Item number='15' value='Clock Daemon'/>
+      <Item number='16' value='Local 0'/>
+      <Item number='17' value='Local 1'/>
+      <Item number='18' value='Local 2'/>
+      <Item number='19' value='Local 3'/>
+      <Item number='20' value='Local 4'/>
+      <Item number='21' value='Local 5'/>
+      <Item number='22' value='Local 6'/>
+      <Item number='23' value='Local 7'/>
+    </Enumerate>
+    <Enumerate name='severity_code' locked='true'>
+      <Item number='0' value='Emergency'/>
+      <Item number='1' value='Alert'/>
+      <Item number='2' value='Critical'/>
+      <Item number='3' value='Error'/>
+      <Item number='4' value='Warning'/>
+      <Item number='5' value='Notice'/>
+      <Item number='6' value='Informational'/>
+      <Item number='7' value='Debug'/>
+    </Enumerate>
+  </EnumList>
+  <Element base='AoTestEquipment' id='10' name='Hostname' table='HOSTNAME'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <Description>Host name as in message</Description>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Created' column='CREATED'>
+      <DisplayName>Created</DisplayName>
+      <BaseName>ao_created</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='DisplayName' column='DISP_NAME'>
+      <Description>Display name of the host</Description>
+      <DisplayName>Host Name</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoTestEquipment' id='20' name='Application' table='APP_NAME'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Created' column='CREATED'>
+      <DisplayName>Created</DisplayName>
+      <BaseName>ao_created</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='DisplayName' column='DISP_NAME'>
+      <Description>User friendly display name</Description>
+      <DisplayName>Application</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoUnit' id='32' name='Unit' table='UNIT'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Factor' column='FACTOR'>
+      <DisplayName>Factor</DisplayName>
+      <BaseName>factor</BaseName>
+      <Type>DtDouble</Type>
+      <Flags obligatory='true'>2</Flags>
+    </Attribute>
+    <Attribute name='Offset' column='OFFSET_X'>
+      <DisplayName>Offset</DisplayName>
+      <BaseName>offset</BaseName>
+      <Type>DtDouble</Type>
+      <Flags obligatory='true'>2</Flags>
+    </Attribute>
+    <Attribute name='PhysDim' column='PHYS_DIM'>
+      <DisplayName>Physical Dimension</DisplayName>
+      <BaseName>phys_dimension</BaseName>
+      <Type>DtLongLong</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoTestEquipment' id='40' name='Enterprise' table='ENT'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <Description>Enterprise ID (number)</Description>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Company' column='COMPANY'>
+      <Description>Short name of company</Description>
+      <DisplayName>Company Name</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Created' column='CREATED'>
+      <DisplayName>Created</DisplayName>
+      <BaseName>ao_created</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+  </Element>
+  <Element base='AoLog' id='1' name='Syslog' table='SYSLOG'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Message' column='MESSAGE'>
+      <Description>Log message text</Description>
+      <DisplayName>Message</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags obligatory='true'>2</Flags>
+    </Attribute>
+    <Attribute name='LogTime' column='LOG_TIME'>
+      <DisplayName>Log Time</DisplayName>
+      <BaseName>date</BaseName>
+      <Type>DtDate</Type>
+    </Attribute>
+    <Attribute name='Stored' column='STORED'>
+      <Description>Time the message was received</Description>
+      <DisplayName>Stored</DisplayName>
+      <BaseName>version_date</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Severity' column='SEVERITY'>
+      <Description>Severity code of the message</Description>
+      <DisplayName>Severity</DisplayName>
+      <Type enum='severity_code'>DtEnum</Type>
+      <Flags obligatory='true' index='true'>130</Flags>
+    </Attribute>
+    <Attribute name='Facility' column='FACILITY'>
+      <Description>Facility code</Description>
+      <DisplayName>Facility</DisplayName>
+      <Type enum='facility_code'>DtEnum</Type>
+      <Flags index='true'>128</Flags>
+    </Attribute>
+    <Attribute name='Hostname' column='HOSTNAME'>
+      <Description>Reference to host computer</Description>
+      <DisplayName>Host Name</DisplayName>
+      <Type>DtLongLong</Type>
+      <Flags index='true'>128</Flags>
+      <RefId>10</RefId>
+    </Attribute>
+    <Attribute name='Application' column='APP_NAME'>
+      <Description>Reference to application name</Description>
+      <DisplayName>Application</DisplayName>
+      <Type>DtLongLong</Type>
+      <Flags index='true'>128</Flags>
+      <RefId>20</RefId>
+    </Attribute>
+    <Attribute name='ProcessID' column='PID'>
+      <Description>Process ID (PID)</Description>
+      <DisplayName>Process ID</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='MessageID' column='MSGID'>
+      <Description>Message ID</Description>
+      <DisplayName>Message ID</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoAny' id='30' name='SdIdent' table='SD_ID'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Created' column='CREATED'>
+      <DisplayName>Created</DisplayName>
+      <BaseName>ao_created</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Stem' column='STEM'>
+      <Description>The main stem part of the identity</Description>
+      <DisplayName>Identity</DisplayName>
+      <Type>DtString</Type>
+      <Flags obligatory='true'>2</Flags>
+    </Attribute>
+    <Attribute name='Enterprise' column='ENT_ID'>
+      <DisplayName>Enterprise ID</DisplayName>
+      <Type>DtLongLong</Type>
+      <RefId>40</RefId>
+    </Attribute>
+  </Element>
+  <Element base='AoAny' id='31' name='SdName' table='SD_NAME' parent='30'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='DataType' column='DATA_TYPE'>
+      <DisplayName>Data Type</DisplayName>
+      <Type enum='datatype_enum'>DtEnum</Type>
+      <Flags obligatory='true'>2</Flags>
+      <DefaultValue>1</DefaultValue>
+    </Attribute>
+    <Attribute name='Unit' column='UNIT'>
+      <DisplayName>Unit</DisplayName>
+      <Type>DtLongLong</Type>
+      <RefId>32</RefId>
+    </Attribute>
+    <Attribute name='Parent' column='PARENT'>
+      <DisplayName>Parent</DisplayName>
+      <BaseName>parent</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' obligatory='true' index='true'>131</Flags>
+      <RefId>30</RefId>
+    </Attribute>
+  </Element>
+  <Element base='AoLog' id='2' name='SdData' table='SD_DATA' parent='1'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Value' column='NAME'>
+      <DisplayName>Value</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Parent' column='PARENT'>
+      <DisplayName>Parent</DisplayName>
+      <BaseName>parent</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='true' index='true'>130</Flags>
+      <RefId>1</RefId>
+    </Attribute>
+    <Attribute name='SdName' column='SD_NAME'>
+      <Description>Refrence to structured data item</Description>
+      <DisplayName>Data Name</DisplayName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='true' index='true'>130</Flags>
+      <RefId>31</RefId>
+    </Attribute>
+  </Element>
+</OdsModel>

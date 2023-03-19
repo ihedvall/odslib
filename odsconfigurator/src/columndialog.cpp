@@ -136,8 +136,8 @@ ColumnDialog::ColumnDialog(wxWindow *parent, IModel& model, const IColumn& origi
   auto* index = new wxCheckBox(this, wxID_ANY, "Index. The column is indexed.",
                                wxDefaultPosition,wxDefaultSize, 0, wxGenericValidator(&index_));
 
-  auto* save_button_ = new wxButton(this, wxID_OK, wxGetStockLabel(wxID_SAVE, wxSTOCK_FOR_BUTTON));
-  auto* cancel_button_ = new wxButton(this, wxID_CANCEL, wxGetStockLabel(wxID_CANCEL, wxSTOCK_FOR_BUTTON));
+  auto* save_button = new wxButton(this, wxID_OK, wxGetStockLabel(wxID_SAVE, wxSTOCK_FOR_BUTTON));
+  auto* cancel_button = new wxButton(this, wxID_CANCEL, wxGetStockLabel(wxID_CANCEL, wxSTOCK_FOR_BUTTON));
 
   auto* app_name_label = new wxStaticText(this, wxID_ANY, L"Application Name:");
   auto* db_name_label = new wxStaticText(this, wxID_ANY, L"Database Name:");
@@ -235,8 +235,8 @@ ColumnDialog::ColumnDialog(wxWindow *parent, IModel& model, const IColumn& origi
   default_sizer->Add(def_val, 0, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, 5);
 
   auto* system_sizer = new wxStdDialogButtonSizer();
-  system_sizer->AddButton(save_button_);
-  system_sizer->AddButton(cancel_button_);
+  system_sizer->AddButton(save_button);
+  system_sizer->AddButton(cancel_button);
   system_sizer->Realize();
 
   auto* id_box = new wxStaticBoxSizer(wxVERTICAL,this, L"Identification");
@@ -273,7 +273,7 @@ ColumnDialog::ColumnDialog(wxWindow *parent, IModel& model, const IColumn& origi
   main_sizer->Add(system_sizer, 0, wxALIGN_CENTER_HORIZONTAL | wxBOTTOM | wxLEFT | wxRIGHT, 10);
 
   SetSizerAndFit(main_sizer);
-  save_button_->SetDefault();
+  save_button->SetDefault();
 
 }
 
@@ -376,7 +376,7 @@ bool ColumnDialog::ValidateColumn() {
           if (create != wxID_OK) {
             return false;
           }
-          model_.AddEnum(new_enum);
+          model_.AddEnum(dialog.GetEnum());
           break;
         }
 

@@ -6,7 +6,9 @@
 #include <filesystem>
 #include <chrono>
 #include <algorithm>
+#include <ranges>
 
+#include "ods/itable.h"
 #include "ods/imodel.h"
 #include "util/ixmlfile.h"
 #include "util/logstream.h"
@@ -531,12 +533,64 @@ bool IModel::DeleteTable(int64_t application_id) {
 }
 
 std::vector<const ITable*> IModel::AllTables() const {
-  std::vector<const ITable*> list;
+  std::vector<const ITable*> temp_list;
   for (const auto& itr : table_list_) {
-    list.emplace_back(&itr.second);
-    AddSubTable(itr.second, list);
+    temp_list.emplace_back(&itr.second);
+    AddSubTable(itr.second, temp_list);
   }
-  return list;
+  // Need to sort the list so the referenced tables are created first
+  std::vector<const ITable*> sorted_list;
+  while (!temp_list.empty()) {
+    size_t list_size = temp_list.size();
+    for (auto itr1 = temp_list.begin();
+         itr1 != temp_list.end();
+         /* No ++ here*/ ) {
+      const auto* table = *itr1;
+      if (table == nullptr) {
+        itr1 = temp_list.erase(itr1);
+      } else {
+        bool ref_exist = false;
+        const auto& column_list = table->Columns();
+        for (const auto& column : column_list) {
+           const auto ref_id = column.ReferenceId();
+           if (ref_id == 0) {
+             continue;
+           }
+           const auto exist = std::ranges::any_of(temp_list,
+                [&] (const auto* ref_table) {
+                   return ref_table != nullptr &&
+                          ref_table->ApplicationId() == ref_id &&
+                          ref_table->ApplicationId() != table->ApplicationId();
+                 });
+           if (exist) {
+             ref_exist = true;
+             break;
+           }
+        }
+        if (ref_exist) {
+           ++itr1;
+        } else {
+           const ITable* temp_ptr = *itr1;
+           sorted_list.push_back(temp_ptr);
+           itr1 = temp_list.erase(itr1);
+        }
+      }
+    }
+    if (temp_list.size() == list_size) {
+      // Something is wrong in the model. Just add remaining tables
+      LOG_ERROR() << "Circular dependency detected. Model: " << Name();
+      for (const auto* temp1 : temp_list) {
+        if (temp1 == nullptr) {
+           continue;
+        }
+        LOG_ERROR() << "Circular dependency detected. Table: "
+                    << temp1->ApplicationName();
+        sorted_list.push_back(temp1);
+      }
+      temp_list.clear();
+    }
+  }
+  return sorted_list;
 }
 
 bool IModel::SaveModel(const std::string &filename) const {
@@ -548,7 +602,7 @@ bool IModel::SaveModel(const std::string &filename) const {
   xml_file->FileName(filename);
   auto &root = xml_file->RootName("OdsModel");
   xml_file->SetProperty("Version", 2);
-  xml_file->SetProperty("NAme", Name());
+  xml_file->SetProperty("Name", Name());
   xml_file->SetProperty("ApplicationVersion", Version());
   xml_file->SetProperty("Description", Description());
   xml_file->SetProperty("CreatedBy", CreatedBy());

@@ -7,12 +7,13 @@
 #include <vector>
 #include <memory>
 #include <ods/iattribute.h>
-
+#include <ods/itable.h>
 namespace ods {
 class IItem {
  public:
   IItem() = default;
   explicit IItem(const std::string& app_name);
+  IItem(const std::string& app_name, const std::string& item_name);
   explicit IItem(int64_t app_id);
   virtual ~IItem() = default;
 
@@ -22,7 +23,9 @@ class IItem {
   [[nodiscard]] int64_t ItemId() const;
   void ItemId(int64_t index);
 
+  void Name(const std::string& item_name);
   [[nodiscard]] std::string Name() const;
+
   [[nodiscard]] uint64_t Created() const;
   [[nodiscard]] uint64_t Modified() const;
 
@@ -30,6 +33,15 @@ class IItem {
   void ApplicationName(const std::string& name);
 
   void AppendAttribute(const IAttribute& attribute);
+
+  template<typename T>
+  void AppendAttribute(const ITable& table, bool base, const std::string& name, const T& value) {
+    const auto *column = base ? table.GetColumnByBaseName(name) : table.GetColumnByName(name);
+    if (column != nullptr && !column->DatabaseName().empty()) {
+      AppendAttribute({column->ApplicationName(), column->BaseName(), value});
+    }
+  }
+
   void SetAttribute(const IAttribute& attribute);
 
   [[nodiscard]] bool ExistAttribute(const std::string& name) const;
@@ -55,8 +67,9 @@ class IItem {
   }
  private:
   int64_t     item_id_ = 0;        ///< Database index (Optional)
-  int64_t     application_id_ = 0; ///< Table ID
-  std::string application_name_;   ///< Table name
+  std::string item_name_;          ///< Item name (Optional)
+  int64_t     application_id_ = 0; ///< Table application ID
+  std::string application_name_;   ///< Table name (Required if application ID is 0.
   std::vector<IAttribute> attribute_list_;
 };
 

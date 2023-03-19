@@ -52,21 +52,21 @@ class ITable {
     security_mode_ = mode;
   }
 
-  [[nodiscard]] std::string ApplicationName() const {
+  [[nodiscard]] const std::string& ApplicationName() const {
     return application_name_;
   }
   void ApplicationName(const std::string& name) {
     application_name_ = name;
   }
 
-  [[nodiscard]] std::string DatabaseName() const {
+  [[nodiscard]] const std::string& DatabaseName() const {
     return database_name_;
   }
   void DatabaseName(const std::string& name) {
     database_name_ = name;
   }
 
-  [[nodiscard]] std::string Description() const {
+  [[nodiscard]] const std::string& Description() const {
     return description_;
   }
   void Description(const std::string& text) {

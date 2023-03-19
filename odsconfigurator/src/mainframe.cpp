@@ -11,10 +11,11 @@
 #include <util/logstream.h>
 #include <ods/atfxfile.h>
 #include "sqlitedatabase.h"
+#include "postgresdb.h"
 #include "mainframe.h"
 #include "odsconfigid.h"
 #include "odsdocument.h"
-
+#include "postgresdialog.h"
 
 using namespace util::log;
 
@@ -45,9 +46,12 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxDocMDIParentFrame) // NOLINT
 
   EVT_MENU(kIdImportFile, MainFrame::OnImportAtfx)
   EVT_MENU(kIdImportSqlite, MainFrame::OnImportSqlite)
+  EVT_MENU(kIdImportPostgres, MainFrame::OnImportPostgres)
 
   EVT_UPDATE_UI(kIdCreateDbSqlite, MainFrame::OnUpdateAnyDoc)
+  EVT_UPDATE_UI(kIdCreateDbPostgres, MainFrame::OnUpdateAnyDoc)
   EVT_MENU(kIdCreateDbSqlite, MainFrame::OnCreateDbSqlite)
+  EVT_MENU(kIdCreateDbPostgres, MainFrame::OnCreateDbPostgres)
 wxEND_EVENT_TABLE()
 
 MainFrame::MainFrame(const wxString& title, const wxPoint& start_pos, const wxSize& start_size, bool maximized)
@@ -67,6 +71,7 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& start_pos, const wxSi
 
   auto* menu_create = new wxMenu;
   menu_create->Append(kIdCreateDbSqlite, "SQLite Database");
+  menu_create->Append(kIdCreateDbPostgres, "PostgreSQL Database");
 
   // FILE
   auto *menu_file = new wxMenu;
@@ -302,6 +307,58 @@ void MainFrame::OnImportSqlite(wxCommandEvent &event) {
 
 }
 
+void MainFrame::OnImportPostgres(wxCommandEvent &event) {
+
+  wxFileDialog dialog(this, "Select ODS Source", "", "",
+                      "SQLite Database (*.sqlite)|*.sqlite|All files (*.*)|*.*",
+                      wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+  const auto ret = dialog.ShowModal();
+  if (ret != wxID_OK) {
+    return;
+  }
+
+  const auto filename = dialog.GetPath().ToStdString();
+
+  detail::SqliteDatabase database;
+  database.FileName(filename);
+  IModel model;
+  const auto import = database.ReadModel(model);
+  if (!import) {
+    std::ostringstream err;
+    err << "Import of the model failed!" << std::endl;
+    err << "More information in the log file." << std::endl;
+    err << "Database: " << filename;
+    wxMessageBox(err.str(), L"Import DB Error", wxOK | wxCENTRE | wxICON_ERROR,this);
+    return;
+  }
+
+  auto* doc_manager = wxDocManager::GetDocumentManager();
+  if (doc_manager == nullptr) {
+    LOG_ERROR() << "Failed to get the document manager.";
+    return;
+  }
+  auto* doc = doc_manager->CreateNewDocument();
+  if (doc == nullptr) {
+    LOG_ERROR() << "Failed to create a new document.";
+    return;
+  }
+  wxString title;
+  try {
+    const std::filesystem::path full_path(filename);
+    title = full_path.filename().wstring();
+  } catch (const std::exception& error) {
+    LOG_ERROR() << "Invalid path. Error: " << error.what() << ", File: " << filename;
+  }
+  auto* ods_doc = wxDynamicCast(doc, OdsDocument); // NOLINT
+  if (ods_doc == nullptr) {
+    LOG_ERROR() << "Failed to convert the document.";
+    return;
+  }
+  ods_doc->SetTitle(title);
+  ods_doc->SetModel(model);
+  ods_doc->UpdateAllViews();
+
+}
 void MainFrame::OnCreateDbSqlite(wxCommandEvent &event) {
   auto* man = wxDocManager::GetDocumentManager();
   auto* doc = man != nullptr ? man->GetCurrentDocument() : nullptr;
@@ -312,7 +369,7 @@ void MainFrame::OnCreateDbSqlite(wxCommandEvent &event) {
   if (document == nullptr) {
     return;
   }
-  auto& model = document->GetModel();
+  const auto& model = document->GetModel();
   std::ostringstream temp;
   temp << model.Name() << ".sqlite";
 
@@ -329,13 +386,54 @@ void MainFrame::OnCreateDbSqlite(wxCommandEvent &event) {
   detail::SqliteDatabase database;
   database.FileName(filename);
   BackupFiles(filename);
+
   const auto create = database.Create(model);
+
   if (!create) {
     std::ostringstream err;
     err << "Create of the database failed!" << std::endl;
     err << "More information in the log file." << std::endl;
     err << "Database: " << filename;
-    wxMessageBox(err.str(), L"Create DB Error", wxOK | wxCENTRE | wxICON_ERROR,this);
+    wxMessageBox(err.str(), L"Create DB Error", wxOK | wxCENTRE
+                                                    | wxICON_ERROR,this);
+    return;
+  }
+  document->UpdateAllViews();
+}
+
+void MainFrame::OnCreateDbPostgres(wxCommandEvent &event) {
+  auto* man = wxDocManager::GetDocumentManager();
+  auto* doc = man != nullptr ? man->GetCurrentDocument() : nullptr;
+  if (doc == nullptr) {
+    return;
+  }
+  auto* document = wxDynamicCast(doc, OdsDocument); //NOLINT
+  if (document == nullptr) {
+    return;
+  }
+  const auto& model = document->GetModel();
+  std::ostringstream temp;
+  temp << model.Name() << ".sqlite";
+
+  PostgresDialog dialog(this);
+  const auto ret = dialog.ShowModal();
+  if (ret != wxID_OK) {
+    return;
+  }
+
+  const auto connection_string = dialog.ConnectionString();
+
+  detail::PostgresDb database;
+  database.ConnectionInfo(connection_string);
+  const auto create = database.Create(model);
+
+  if (!create) {
+    std::ostringstream err;
+    err << "Create of the database failed!" << std::endl;
+    err << "More information in the log file." << std::endl;
+    err << "Database: " << database.Name();
+    wxMessageBox(err.str(), L"Create DB Error", wxOK | wxCENTRE
+                                                    | wxICON_ERROR,this);
     return;
   }
   document->UpdateAllViews();

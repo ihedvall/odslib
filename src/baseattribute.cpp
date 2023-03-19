@@ -155,7 +155,7 @@ namespace {
       // ANY
       BaseAttrDef{BaseId::AoAny, false, "parent", "Parent", "PARENT", "Parent", DataType::DtLongLong, kIndex | kObligatory },
       // LOG
-      BaseAttrDef{BaseId::AoLog, true, "date", "LogTime", "LOG_TIME", "Log Time", DataType::DtDate, 0 },
+      BaseAttrDef{BaseId::AoLog, false, "date", "LogTime", "LOG_TIME", "Log Time", DataType::DtDate, 0 },
       BaseAttrDef{BaseId::AoLog, false, "parent", "Parent", "PARENT", "Parent Log", DataType::DtLongLong, kIndex },
       // PARAMETER
       BaseAttrDef{BaseId::AoParameter, true, "parameter_datatype", "DataType", "DATA_TYPE", "Data Type", DataType::DtEnum, kObligatory },

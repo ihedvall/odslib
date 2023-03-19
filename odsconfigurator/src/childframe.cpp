@@ -74,33 +74,32 @@ ChildFrame::ChildFrame(wxDocument *doc,
   notebook_ = new wxNotebook(this, kIdNotebook);
   notebook_->SetImageList(&image_list_);
 
-  auto* common = new CommonPanel(notebook_);
-  auto* config = new TablePanel(notebook_);
-  auto* enumerate = new EnumPanel(notebook_);
+  auto *common = new CommonPanel(notebook_);
+  auto *config = new TablePanel(notebook_);
+  auto *enumerate = new EnumPanel(notebook_);
   //auto* relation = new CommonPanel(notebook_);
-  notebook_->AddPage(common, L"General", false,4);
-  notebook_->AddPage(config, L"Database Design", false,5);
-  notebook_->AddPage(enumerate, L"Enumerations", false,6);
+  notebook_->AddPage(common, L"General", false, 4);
+  notebook_->AddPage(config, L"Database Design", false, 5);
+  notebook_->AddPage(enumerate, L"Enumerations", false, 6);
 
-  auto* save_button = new wxButton(this, wxID_SAVE, wxGetStockLabel(wxID_SAVE, wxSTOCK_FOR_BUTTON));
-  auto* save_as_button = new wxButton(this, wxID_SAVEAS, wxGetStockLabel(wxID_SAVEAS, wxSTOCK_FOR_BUTTON));
-  auto* cancel_button = new wxButton(this, wxID_CLOSE, wxGetStockLabel(wxID_CLOSE, wxSTOCK_FOR_BUTTON));
+  auto *save_button = new wxButton(this, wxID_SAVE, wxGetStockLabel(wxID_SAVE, wxSTOCK_FOR_BUTTON));
+  auto *save_as_button = new wxButton(this, wxID_SAVEAS, wxGetStockLabel(wxID_SAVEAS, wxSTOCK_FOR_BUTTON));
+  auto *cancel_button = new wxButton(this, wxID_CLOSE, wxGetStockLabel(wxID_CLOSE, wxSTOCK_FOR_BUTTON));
 
-  auto* system_sizer = new wxBoxSizer(wxHORIZONTAL);
+  auto *system_sizer = new wxBoxSizer(wxHORIZONTAL);
   system_sizer->Add(save_button, 0, wxALIGN_LEFT | wxALL, 10);
   system_sizer->Add(save_as_button, 0, wxALIGN_LEFT | wxALL, 10);
   system_sizer->Add(cancel_button, 0, wxALIGN_LEFT | wxALL, 10);
 
-  auto* main_sizer = new wxBoxSizer(wxVERTICAL);
+  auto *main_sizer = new wxBoxSizer(wxVERTICAL);
   main_sizer->Add(notebook_, 1, wxALIGN_LEFT | wxALL | wxEXPAND, 4);
   main_sizer->Add(system_sizer, 0, wxALIGN_CENTER_HORIZONTAL | wxBOTTOM | wxLEFT | wxRIGHT, 10);
 
   SetSizerAndFit(main_sizer);
   save_button->SetDefault();
 
-  notebook_->SetSelection(1);
-  notebook_->SetPageImage(1,1);
-
+  notebook_->SetSelection(kTablePanel);
+  notebook_->SetPageImage(kTablePanel, kTablePanel);
 }
 
 void ChildFrame::OnUpdateSave(wxUpdateUIEvent &event) {

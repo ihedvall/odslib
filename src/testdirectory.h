@@ -63,11 +63,10 @@ class TestDirectory : public IEnvironment {
   void Start() override;
   void Stop() override;
 
-  bool FetchNameIdMap(const ITable& table, NameIdMap& dest_list) override;
+  IDatabase& Database() override;
 
  protected:
   bool InsertRow(IItem& row);
-
 
  private:
 
@@ -99,7 +98,7 @@ class TestDirectory : public IEnvironment {
   std::string test_dir_format_ = "<TestBed>_<IsoTime>_<Order>";
   std::vector<std::string> exclude_list_;
 
-  SqliteDatabase database_;
+  std::unique_ptr<IDatabase> database_;
 
   std::atomic<bool> is_ok_ = false;
   std::atomic<bool> stop_thread_ = false;
@@ -114,8 +113,6 @@ class TestDirectory : public IEnvironment {
   TestDirList test_dir_list_; ///< Temporary list of test directories in root directory
   TestDirList update_list_;   ///< Temporary list of directories that needs an update
 
-  [[nodiscard]] bool CreateDb();
-  [[nodiscard]] bool InitDb();
   bool FetchFromDb();
   void WorkerThread();
   bool ScanRootDir();

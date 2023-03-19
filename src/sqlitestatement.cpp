@@ -24,7 +24,6 @@ SqliteStatement::SqliteStatement(sqlite3 *database, const std::string &sql)
         << ", SQL: " << sql;
       throw std::runtime_error(error.str());
     }
-
   }
 }
 

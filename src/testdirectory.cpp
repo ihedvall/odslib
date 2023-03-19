@@ -10,29 +10,21 @@
 #include <util/stringutil.h>
 #include <util/stringparser.h>
 #include <util/timestamp.h>
-#include <util/cryptoutil.h>
+#include <mdf/cryptoutil.h>
 #include "ods/databaseguard.h"
 #include "ods/iitem.h"
 #include "mdf/mdfreader.h"
 #include "testdirectory.h"
+#include "mdf/idatagroup.h"
 
 using namespace util::log;
 using namespace util::string;
 using namespace util::time;
-using namespace util::crypto;
 using namespace mdf;
 using namespace std::chrono_literals;
 using namespace std::filesystem;
 
 namespace {
-
-template<typename T>
-void AddItemColumn(ods::IItem &dest, const ods::ITable &table, bool base, const std::string &name, const T& value) {
-  const auto *column = base ? table.GetColumnByBaseName(name) : table.GetColumnByName(name);
-  if (column != nullptr && !column->DatabaseName().empty()) {
-    dest.AppendAttribute({column->ApplicationName(), column->BaseName(), value});
-  }
-}
 
 ods::DataType ChannelTypeToDataType(const mdf::IChannel& channel) {
   switch (channel.DataType()) {
@@ -93,7 +85,7 @@ namespace ods::detail {
 
 TestDirectory::TestDirectory()
 : IEnvironment(EnvironmentType::kTypeTestDirectory) {
-
+  database_ = std::make_unique<SqliteDatabase>();
 }
 
 TestDirectory::~TestDirectory() {
@@ -164,39 +156,12 @@ bool TestDirectory::Init() {
   return true;
 }
 
-bool TestDirectory::CreateDb() {
-  if (ModelFileName().empty()) {
-    LOG_ERROR() << "No model file defined. Cannot create a database.";
-    return false;
-  }
-  const auto read = model_.ReadModel(ModelFileName());
-  if (!read) {
-    LOG_ERROR() << "Failed to read in the model. File: " << ModelFileName();
-    return false;
-  }
-  const auto create = database_.Create(model_);
-  if (!create) {
-    LOG_ERROR() << "Failed to create the cache database.";
-    return false;
-  }
-
-  return true;
-}
-
-bool TestDirectory::InitDb() {
-  if (model_.IsEmpty()) {
-    const auto read = database_.ReadModel(model_);
-    if (!read) {
-      LOG_ERROR() << "Failed to read in the ODS model from the database";
-      return false;
-    }
-  }
-  return true;
-}
-
 void TestDirectory::DbFileName(const std::string &db_file) {
   db_file_ = db_file;
-  database_.FileName(db_file);
+  auto* sqlite_db = dynamic_cast<SqliteDatabase*>(database_.get());
+  if (sqlite_db != nullptr) {
+    sqlite_db->FileName(db_file);
+  }
 }
 
 bool TestDirectory::InsertRow(IItem &row) {
@@ -231,7 +196,7 @@ bool TestDirectory::InsertRow(IItem &row) {
   }
 
   try {
-    database_.Insert(*table, row);
+    database_->Insert(*table, row, SqlFilter());
   } catch (const std::exception& err) {
     LOG_ERROR() << "InsertRow Failed. Error: " << err.what();
     return false;
@@ -296,19 +261,19 @@ bool TestDirectory::FetchFromDb() {
   const auto* unit_table = model_.GetBaseId(BaseId::AoUnit);
 
   SqlFilter empty_filter;
-  DatabaseGuard db_lock(database_);
+  DatabaseGuard db_lock(*database_);
   try {
     if (test_bed_table != nullptr) {
-      database_.FetchItemList(*test_bed_table, test_bed_list_, empty_filter);
+      database_->FetchItemList(*test_bed_table, test_bed_list_, empty_filter);
     }
     if (test_table != nullptr) {
-      database_.FetchItemList(*test_table, test_list_, empty_filter);
+      database_->FetchItemList(*test_table, test_list_, empty_filter);
     }
     if (quantity_table != nullptr) {
-      database_.FetchItemList(*quantity_table, quantity_list_, empty_filter);
+      database_->FetchItemList(*quantity_table, quantity_list_, empty_filter);
     }
     if (unit_table != nullptr) {
-      database_.FetchItemList(*unit_table, unit_list_, empty_filter);
+      database_->FetchItemList(*unit_table, unit_list_, empty_filter);
     }
   } catch (const std::exception& err) {
     LOG_ERROR() << "Fetching from DB failed. Error: " << err.what();
@@ -486,9 +451,9 @@ bool TestDirectory::AddNewTestBed() {
         item.AppendAttribute({name_column->ApplicationName(), name_column->BaseName(), test_dir.test_bed});
       }
       // We open and close the database for each test bed as they are rarely added.
-      DatabaseGuard db_lock(database_);
+      DatabaseGuard db_lock(*database_);
       try {
-        database_.Insert(*table,item);
+        database_->Insert(*table,item, SqlFilter());
       } catch (const std::exception& err) {
         LOG_ERROR() << "Failed to insert test bed. Test Bed: " << test_dir.test_bed
           << ", Error: " << err.what();
@@ -535,7 +500,7 @@ bool TestDirectory::AddTest() {
     return true;
   }
 
-  DatabaseGuard db_lock(database_);
+  DatabaseGuard db_lock(*database_);
   for (auto* add : add_list) {
     IItem item;
     item.ApplicationId(table->ApplicationId());
@@ -564,7 +529,7 @@ bool TestDirectory::AddTest() {
     }
 
     try {
-      database_.Insert(*table,item);
+      database_->Insert(*table,item, SqlFilter());
     } catch (const std::exception& err) {
       LOG_ERROR() << "Failed to insert test. Test: " << add->name
                   << ", Error: " << err.what();
@@ -607,14 +572,14 @@ bool TestDirectory::DeleteTest() {
     return true;
   }
 
-  DatabaseGuard db_lock(database_);
+  DatabaseGuard db_lock(*database_);
   for (int64_t index : del_list) {
     std::ostringstream sql;
     sql << "DELETE FROM " << table->DatabaseName()
         << " WHERE " << index_column->DatabaseName() << " = " << index;
 
     try {
-      database_.ExecuteSql(sql.str());
+      database_->ExecuteSql(sql.str());
     } catch (const std::exception &err) {
       LOG_ERROR() << "Failed to delete test. Error: " << err.what();
       db_lock.Rollback();
@@ -697,13 +662,13 @@ bool TestDirectory::UpdateTestFile() {
   }
 
   // Fetch existing files from the database
-  DatabaseGuard db_lock(database_);
+  DatabaseGuard db_lock(*database_);
   for (auto& test_dir : update_list_) {
     SqlFilter pix;
     pix.AddWhere(*parent_column,SqlCondition::Equal,test_dir.index);
     ItemList db_list;
     try {
-      database_.FetchItemList(*table, db_list, pix);
+      database_->FetchItemList(*table, db_list, pix);
     } catch (const std::exception& err) {
       LOG_ERROR() << "Failed to fetch test files. Test: " << test_dir.name
                   << ", Error: " << err.what();
@@ -719,12 +684,11 @@ bool TestDirectory::UpdateTestFile() {
         return ptr && IEquals(ptr->Name(), test_file.name);
       });
 
-      IItem item;
-      item.ApplicationId(table->ApplicationId());
-      AddItemColumn(item, *table, true,"ao_location", test_file.full_name);
-      AddItemColumn(item, *table, true,"ao_file_mimetype", test_file.type);
-      AddItemColumn(item, *table, true,"ao_size", test_file.size);
-      AddItemColumn(item, *table, true,"ao_last_modified", NsToIsoTime(test_file.modified));
+      IItem item(table->ApplicationId());
+      item.AppendAttribute(*table, true,"ao_location", test_file.full_name);
+      item.AppendAttribute(*table, true,"ao_file_mimetype", test_file.type);
+      item.AppendAttribute(*table, true,"ao_size", test_file.size);
+      item.AppendAttribute(*table, true,"ao_last_modified", test_file.modified);
       // AddItemColumn(item, *table, true,"ao_hash_algorithm", "MD5");
       if (exist != db_list.cend()) {
         // Update
@@ -734,7 +698,7 @@ bool TestDirectory::UpdateTestFile() {
           test_file.is_modified = true;
           //AddItemColumn(item, *table, true,"ao_hash_value", CreateMd5FileString(test_file.full_name));
           try {
-            database_.Update(*table,item, pix);
+            database_->Update(*table,item, pix);
           } catch (const std::exception& err) {
             LOG_ERROR() << "Failed to update test file. Test: " << test_dir.name << ", File: " << test_file.name
                         << ", Error: " << err.what();
@@ -745,11 +709,11 @@ bool TestDirectory::UpdateTestFile() {
       } else {
         // Insert file
         test_file.is_modified = true;
-        AddItemColumn(item, *table, true,"name", test_file.name);
-        AddItemColumn(item, *table, true,"ao_file_parent", test_dir.index);
+        item.AppendAttribute(*table, true,"name", test_file.name);
+        item.AppendAttribute(*table, true,"ao_file_parent", test_dir.index);
         //AddItemColumn(item, *table, true,"ao_hash_value", CreateMd5FileString(test_file.full_name));
         try {
-          database_.Insert(*table,item);
+          database_->Insert(*table,item, SqlFilter());
           test_file.index = item.ItemId();
         } catch (const std::exception& err) {
           LOG_ERROR() << "Failed to insert test file. Test: " << test_dir.name << ", File: " << test_file.name
@@ -776,7 +740,7 @@ bool TestDirectory::UpdateTestFile() {
       SqlFilter file_ix;
       file_ix.AddWhere(*id_column,SqlCondition::Equal,del->ItemId());
       try {
-        database_.Delete(*table,file_ix);
+        database_->Delete(*table,file_ix);
       } catch (const std::exception& err) {
         LOG_ERROR() << "Failed to delete test file. Test: " << test_dir.name << ", File: " << del->Name()
                     << ", Error: " << err.what();
@@ -806,13 +770,13 @@ bool TestDirectory::UpdateMeasFile() {
   }
 
   // Fetch existing files from the database
-  DatabaseGuard db_lock(database_);
+  DatabaseGuard db_lock(*database_);
   for (auto& test_dir : update_list_) {
     SqlFilter pix;
     pix.AddWhere(*parent_column,SqlCondition::Equal,test_dir.index);
     ItemList db_list;
     try {
-      database_.FetchItemList(*table, db_list, pix);
+      database_->FetchItemList(*table, db_list, pix);
     } catch (const std::exception& err) {
       LOG_ERROR() << "Failed to fetch measurement files. Test: " << test_dir.name
                   << ", Error: " << err.what();
@@ -853,22 +817,22 @@ bool TestDirectory::UpdateMeasFile() {
           // Insert Meas file and update Meas
         IItem item;
         item.ApplicationId(table->ApplicationId());
-        AddItemColumn(item, *table, true,"name", test_file.name);
-        AddItemColumn(item, *table, true,"parent_test", test_dir.index);
-        AddItemColumn(item, *table, false,"TestFile", test_file.index);
-        AddItemColumn(item, *table, true,"version_date", NsToIsoTime(header->StartTime()));
-        AddItemColumn(item, *table, true,"version", meas_file->Version());
-        AddItemColumn(item, *table, false,"ProgramId", meas_file->ProgramId());
-        AddItemColumn(item, *table, true,"description", header->Description());
-        AddItemColumn(item, *table, false,"Author", header->Author());
-        AddItemColumn(item, *table, false,"Department", header->Department());
-        AddItemColumn(item, *table, false,"Project", header->Project());
-        AddItemColumn(item, *table, false,"MeasurementId", header->MeasurementId());
-        AddItemColumn(item, *table, false,"RecorderId", header->RecorderId());
-        AddItemColumn(item, *table, false,"RecorderIndex", header->RecorderIndex());
+        item.AppendAttribute(*table, true,"name", test_file.name);
+        item.AppendAttribute(*table, true,"parent_test", test_dir.index);
+        item.AppendAttribute(*table, false,"TestFile", test_file.index);
+        item.AppendAttribute(*table, true,"version_date", header->StartTime());
+        item.AppendAttribute(*table, true,"version", meas_file->Version());
+        item.AppendAttribute(*table, false,"ProgramId", meas_file->ProgramId());
+        item.AppendAttribute(*table, true,"description", header->Description());
+        item.AppendAttribute(*table, false,"Author", header->Author());
+        item.AppendAttribute(*table, false,"Department", header->Department());
+        item.AppendAttribute(*table, false,"Project", header->Project());
+        item.AppendAttribute(*table, false,"MeasurementId", header->MeasurementId());
+        item.AppendAttribute(*table, false,"RecorderId", header->RecorderId());
+        item.AppendAttribute(*table, false,"RecorderIndex", header->RecorderIndex());
 
         try {
-          database_.Insert(*table,item);
+          database_->Insert(*table,item, SqlFilter());
           test_file.meas_index = item.ItemId();
         } catch (const std::exception& err) {
           LOG_ERROR() << "Failed to insert measurement file. Test: " << test_dir.name << ", File: " << test_file.name
@@ -901,7 +865,7 @@ bool TestDirectory::UpdateMeasFile() {
       SqlFilter file_ix;
       file_ix.AddWhere(*id_column,SqlCondition::Equal,del->ItemId());
       try {
-        database_.Delete(*table,file_ix);
+        database_->Delete(*table,file_ix);
       } catch (const std::exception& err) {
         LOG_ERROR() << "Failed to delete measurement file. Test: " << test_dir.name << ", File: " << del->Name()
                     << ", Error: " << err.what();
@@ -928,7 +892,7 @@ bool TestDirectory::UpdateMeas(const MdfFile &meas_file, int64_t parent_index) {
   pix.AddWhere(*parent_column,SqlCondition::Equal,parent_index);
   ItemList db_list;
   try {
-    database_.FetchItemList(*table, db_list, pix);
+    database_->FetchItemList(*table, db_list, pix);
   } catch (const std::exception& err) {
     LOG_ERROR() << "Failed to fetch measurements from the database. Name: " << meas_file.Name()
                 << ", Error: " << err.what();
@@ -965,12 +929,12 @@ bool TestDirectory::UpdateMeas(const MdfFile &meas_file, int64_t parent_index) {
 
       IItem item;
       item.ApplicationId(table->ApplicationId());
-      AddItemColumn(item, *table, true,"name", name);
-      AddItemColumn(item, *table, true,"test", parent_index);
-      AddItemColumn(item, *table, true,"ao_storage_type", static_cast<int>(StorageType::kForeignFormat));
-      AddItemColumn(item, *table, false,"MeasIndex", dg_index);
+      item.AppendAttribute(*table, true,"name", name);
+      item.AppendAttribute(*table, true,"test", parent_index);
+      item.AppendAttribute(*table, true,"ao_storage_type", static_cast<int>(StorageType::kForeignFormat));
+      item.AppendAttribute(*table, false,"MeasIndex", dg_index);
       try {
-        database_.Insert(*table,item);
+        database_->Insert(*table,item, SqlFilter());
         meas_index = item.ItemId();
       } catch (const std::exception& err) {
         LOG_ERROR() << "Failed to insert measurement. File: " << meas_file.Name()
@@ -1012,7 +976,7 @@ bool TestDirectory::UpdateMq(const IDataGroup &data_group, int64_t parent_index)
   pix.AddWhere(*parent_column,SqlCondition::Equal,parent_index);
   ItemList db_list;
   try {
-    database_.FetchItemList(*table, db_list, pix);
+    database_->FetchItemList(*table, db_list, pix);
   } catch (const std::exception& err) {
     LOG_ERROR() << "Failed to fetch measurement quantities from the database. Name: " << data_group.Description()
                 << ", Error: " << err.what();
@@ -1054,9 +1018,9 @@ bool TestDirectory::UpdateMq(const IDataGroup &data_group, int64_t parent_index)
           parent.AddWhere(*id_column,SqlCondition::Equal, mq_index);
           IItem item;
           item.ApplicationId(table->ApplicationId());
-          AddItemColumn(item, *table, false,"Samples", nof_samples);
+          item.AppendAttribute(*table, false,"Samples", nof_samples);
           try {
-            database_.Update(*table,item, parent);
+            database_->Update(*table,item, parent);
           } catch (const std::exception& err) {
             LOG_ERROR() << "Failed to update measurement quantity. Name: " << name;
             return false;
@@ -1069,15 +1033,15 @@ bool TestDirectory::UpdateMq(const IDataGroup &data_group, int64_t parent_index)
         const auto independent = channel->Type() == ChannelType::Master || channel->Type() == ChannelType::VirtualMaster;
         auto item = std::make_unique<IItem>();
         item->ApplicationId(table->ApplicationId());
-        AddItemColumn(*item, *table, true,"name", name);
-        AddItemColumn(*item, *table, true,"measurement", parent_index);
-        AddItemColumn(*item, *table, true,"datatype", static_cast<long>(ChannelTypeToDataType(*channel)));
-        AddItemColumn(*item, *table, true,"quantity", quantity_index);
-        AddItemColumn(*item, *table, true,"unit", unit_index);
-        AddItemColumn(*item, *table, false,"Samples", nof_samples);
-        AddItemColumn(*item, *table, false,"Independent", independent);
+        item->AppendAttribute(*table, true,"name", name);
+        item->AppendAttribute(*table, true,"measurement", parent_index);
+        item->AppendAttribute(*table, true,"datatype", static_cast<long>(ChannelTypeToDataType(*channel)));
+        item->AppendAttribute(*table, true,"quantity", quantity_index);
+        item->AppendAttribute(*table, true,"unit", unit_index);
+        item->AppendAttribute(*table, false,"Samples", nof_samples);
+        item->AppendAttribute(*table, false,"Independent", independent);
         try {
-          database_.Insert(*table,*item);
+          database_->Insert(*table,*item, SqlFilter());
           mq_index = item->ItemId();
         } catch (const std::exception& err) {
           LOG_ERROR() << "Failed to insert measurement quantity. Name: " << name
@@ -1116,13 +1080,13 @@ int64_t TestDirectory::UpdateQuantity(const IChannel& channel) {
   // Insert Quantity
   auto item = std::make_unique<IItem>();
   item->ApplicationId(table->ApplicationId());
-  AddItemColumn(*item, *table, true,"name", name);
-  AddItemColumn(*item, *table, true,"description", channel.Description());
-  AddItemColumn(*item, *table, true,"default_datatype", static_cast<long>(ChannelTypeToDataType(channel)));
-  AddItemColumn(*item, *table, true,"default_mq_name", name);
-  AddItemColumn(*item, *table, true,"default_unit", unit_index);
+  item->AppendAttribute(*table, true,"name", name);
+  item->AppendAttribute(*table, true,"description", channel.Description());
+  item->AppendAttribute(*table, true,"default_datatype", static_cast<long>(ChannelTypeToDataType(channel)));
+  item->AppendAttribute(*table, true,"default_mq_name", name);
+  item->AppendAttribute(*table, true,"default_unit", unit_index);
   try {
-    database_.Insert(*table,*item);
+    database_->Insert(*table,*item, SqlFilter());
   } catch (const std::exception& err) {
     LOG_ERROR() << "Failed to insert quantity. Quantity: " << name
                 << ", Error: " << err.what();
@@ -1152,12 +1116,12 @@ int64_t TestDirectory::UpdateUnit(const std::string &unit) {
   // Insert Unit
   auto item = std::make_unique<IItem>();
   item->ApplicationId(table->ApplicationId());
-  AddItemColumn(*item, *table, true,"name", unit);
-  AddItemColumn(*item, *table, true,"factor", 1.0);
-  AddItemColumn(*item, *table, true,"offset", 0.0);
-  AddItemColumn(*item, *table, true,"phys_dimension",0);
+  item->AppendAttribute(*table, true,"name", unit);
+  item->AppendAttribute(*table, true,"factor", 1.0);
+  item->AppendAttribute(*table, true,"offset", 0.0);
+  item->AppendAttribute(*table, true,"phys_dimension",0);
   try {
-    database_.Insert(*table,*item);
+    database_->Insert(*table,*item, SqlFilter());
   } catch (const std::exception& err) {
     LOG_ERROR() << "Failed to insert unit. Unit: " << unit
                 << ", Error: " << err.what();
@@ -1168,22 +1132,8 @@ int64_t TestDirectory::UpdateUnit(const std::string &unit) {
   return index;
 }
 
-bool TestDirectory::FetchNameIdMap(const ITable &table, NameIdMap &dest_list) {
-  DatabaseGuard db_lock(database_);
-  SqlFilter empty_filter;
-  try {
-    IdNameMap temp_list;
-    database_.FetchNameMap(table,temp_list, empty_filter);
-    for (const auto& itr : temp_list) {
-      dest_list.insert({itr.second, itr.first});
-    }
-  } catch (const std::exception& err) {
-    LOG_ERROR() << "Failed to get name-id map. Table: " << table.ApplicationName()
-                << ", Error: " << err.what();
-    db_lock.Rollback();
-    return false;
-  }
-  return true;
+IDatabase &TestDirectory::Database() {
+  return *database_;
 }
 
 } // end namespace

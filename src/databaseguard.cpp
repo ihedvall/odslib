@@ -10,7 +10,7 @@ DatabaseGuard::DatabaseGuard(IDatabase &database)
   if (!database.IsOpen()) {
     try {
       database.Open();
-      db_ok_ = true;
+      db_ok_ = database.IsOpen();
     } catch (const std::exception&) {
       database_ = nullptr;
     }

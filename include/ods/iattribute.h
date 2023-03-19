@@ -2,10 +2,11 @@
  * Copyright 2022 Ingemar Hedvall
  * SPDX-License-Identifier: MIT
  */
-
+#include <cstdint>
 #include <string>
 #include <sstream>
 #include <typeinfo>
+#include <vector>
 
 #pragma once
 
@@ -15,7 +16,7 @@ class IAttribute {
  private:
   std::string name_; ///< Application Name (Required)
   std::string base_name_; ///< Base name of the column (Optional but recommended)
-  std::string value_;
+  std::string value_; ///< Note that BLOB are stored as Base64 strings
 
  public:
   IAttribute() = default;
@@ -41,6 +42,20 @@ class IAttribute {
   void Name(const std::string& name);
   [[nodiscard]] const std::string& BaseName() const;
   void BaseName(const std::string& name);
+
+  /** \brief Checks if the value is an unsigned number.
+   *
+   * Checks if a value is an unsigned number. Typically used to check
+   * if a date and time value was added as an ISO time string or as
+   * namo-seconds since 1970.
+   * @return True if the value string is a number.
+   */
+  [[nodiscard]] bool IsValueUnsigned() const;
+
+
+  [[nodiscard]] bool IsValueEmpty() const { ///< Returns true if the value is an empty string
+    return value_.empty();
+  }
 
   template <typename T>
   [[nodiscard]] T Value() const {
@@ -71,6 +86,9 @@ template <>
 [[nodiscard]] bool IAttribute::Value<bool>() const;
 
 template <>
+[[nodiscard]] std::vector<uint8_t> IAttribute::Value<std::vector<uint8_t>>() const;
+
+template <>
 void IAttribute::Value<std::string>(const std::string& value);
 
 template <>
@@ -81,6 +99,9 @@ void IAttribute::Value<float>(const float& value);
 
 template <>
 void IAttribute::Value<bool>(const bool& value);
+
+template <>
+void IAttribute::Value<std::vector<uint8_t>>(const std::vector<uint8_t>& value);
 } // end namespace
 
 

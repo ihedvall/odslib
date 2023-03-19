@@ -142,7 +142,6 @@ TEST_F(TestSqlite, WriteAndRead) {
     GTEST_SKIP();
   }
 
-
   std::filesystem::path file(kTestDir);
   file.append(kWriteDb);
     // Create DB

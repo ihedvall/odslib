@@ -8,14 +8,14 @@ project(TestOds
 
 include("../script/zlib.cmake")
 include("../script/openssl.cmake")
-include("../script/expat.cmake")
+#include("../script/expat.cmake")
 
 add_executable(test_ods
         testsqlite.h testsqlite.cpp
         testidatabase.cpp
         testodsdef.cpp
         testodsitem.cpp
-        testtestdirectory.cpp)
+        testtestdirectory.cpp testlibpq.cpp testpostgres.cpp testpostgres.h)
 
 target_include_directories(test_ods PRIVATE
         ../include
@@ -23,7 +23,8 @@ target_include_directories(test_ods PRIVATE
         ${utillib_SOURCE_DIR}/include
         ${GTEST_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIRS}
-        ${SQLite3_INCLUDE_DIRS})
+        ${SQLite3_INCLUDE_DIRS}
+        ${PostgreSQL_INCLUDE_DIRS})
 
 if (MINGW)
     target_link_options(test_ods PRIVATE -static -fstack-protector)
@@ -38,13 +39,18 @@ target_link_libraries(test_ods PRIVATE ${SQLite3_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${Boost_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${EXPAT_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${ZLIB_LIBRARIES})
-target_link_libraries(test_ods PRIVATE ${OPENSSL_CRYPTO_LIBRARY})
+target_link_libraries(test_ods PRIVATE ${OPENSSL_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${GTEST_BOTH_LIBRARIES})
+target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpq.lib)
+target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgtypes.lib)
+target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgport.lib)
+target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgcommon.lib)
 
 if (WIN32)
 target_link_libraries(test_ods PRIVATE ws2_32)
 target_link_libraries(test_ods PRIVATE mswsock)
-#target_link_libraries(test_ods PRIVATE iconv)
+target_link_libraries(test_ods PRIVATE secur32)
+target_link_libraries(test_ods PRIVATE crypt32)
 endif()
 
 

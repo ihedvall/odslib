@@ -6,7 +6,7 @@
 #include <string>
 #include "ods/odsdef.h"
 #include "ods/imodel.h"
-
+#include "ods/idatabase.h"
 namespace ods {
 
 class IEnvironment {
@@ -48,12 +48,24 @@ class IEnvironment {
   virtual void Start() = 0; ///< Start worker thread
   virtual void Stop() = 0;  ///< Stop the worker thread
 
-  virtual bool FetchNameIdMap(const ITable& table, NameIdMap& dest_list) = 0;
+  virtual IDatabase& Database() = 0;
 
+  [[nodiscard]] bool DumpDb(const std::string& dump_path);
  protected:
   IModel model_; ///< Most environment types are based upon an ODS model.
   explicit IEnvironment(EnvironmentType type);
 
+  virtual bool CreateDb();
+  virtual bool InitDb();
+
+  /** \brief Support function that adds a row into a table that have aunique name.
+   *
+   * Adds a row into a table
+   * @param table
+   * @param name
+   * @return
+   */
+  virtual int64_t AddUniqueName(const IItem& item);
  private:
   EnvironmentType env_type_ = EnvironmentType::kTypeGeneric;
   std::string name_;        ///< Name of the environment
