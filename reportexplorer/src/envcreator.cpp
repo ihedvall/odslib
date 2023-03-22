@@ -34,6 +34,7 @@ std::unique_ptr<IEnvironment> EnvCreator::CreateEnvironment(ods::EnvironmentType
   }
   return env;
 }
+
 std::unique_ptr<IEnvironment> EnvCreator::CreateFromConfig(const std::string &name) {
 
   std::unique_ptr<IEnvironment> env;

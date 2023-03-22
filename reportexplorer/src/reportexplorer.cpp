@@ -14,8 +14,8 @@
 #include "util/logconfig.h"
 #include "util/logstream.h"
 
-#include "ods/ienvironmentcreator.h"
 #include "ods/databaseguard.h"
+#include "ods/odsfactory.h"
 
 #include "reportexplorer.h"
 #include "mainframe.h"

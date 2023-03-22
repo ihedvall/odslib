@@ -6,9 +6,13 @@
 #include <string>
 #include <vector>
 #include <memory>
+
+
 #include <ods/iattribute.h>
 #include <ods/itable.h>
+
 namespace ods {
+
 class IItem {
  public:
   IItem() = default;
@@ -48,7 +52,10 @@ class IItem {
   [[nodiscard]] bool ExistBaseAttribute(const std::string& base_name) const;
 
   [[nodiscard]] const IAttribute* GetAttribute(const std::string& name) const;
+  [[nodiscard]] IAttribute* GetAttribute(const std::string& name);
+
   [[nodiscard]] const IAttribute* GetBaseAttribute(const std::string& name) const;
+  [[nodiscard]] IAttribute* GetBaseAttribute(const std::string& name);
 
   [[nodiscard]] const std::vector<IAttribute>& AttributeList() const;
 
@@ -60,17 +67,22 @@ class IItem {
     return attr == nullptr ? T {} : attr->Value<T>();
   }
 
+
   template <typename T>
   T BaseValue(const std::string& base_name) const {
     const auto* attr = GetBaseAttribute(base_name);
     return attr == nullptr ? T {} : attr->Value<T>();
   }
+
  private:
+
   int64_t     item_id_ = 0;        ///< Database index (Optional)
   std::string item_name_;          ///< Item name (Optional)
   int64_t     application_id_ = 0; ///< Table application ID
   std::string application_name_;   ///< Table name (Required if application ID is 0.
   std::vector<IAttribute> attribute_list_;
+
+
 };
 
 using ItemList = std::vector<std::unique_ptr<IItem>>;

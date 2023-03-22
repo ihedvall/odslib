@@ -31,7 +31,8 @@ class IDatabase {
   void Name(const std::string& name) {name_ = name;}
   [[nodiscard]] const std::string& Name() const {return name_;}
 
-  void ConnectionInfo(const std::string& info) { connection_info_ = info;}
+  virtual void ConnectionInfo(const std::string& info);
+
   [[nodiscard]] const std::string& ConnectionInfo() const {
     return connection_info_;
   }
@@ -43,10 +44,10 @@ class IDatabase {
   [[nodiscard]] virtual bool Create(const IModel& model);
   [[nodiscard]] virtual bool ReadModel(IModel& model);
 
-  virtual void Insert(const ITable& table, IItem& row,
-                      const SqlFilter& filter) = 0;
-  virtual void Update(const ITable& table, IItem& row,
-                      const SqlFilter& filter) = 0;
+  void Insert(const ITable& table, IItem& row,
+                      const SqlFilter& filter);
+  void Update(const ITable& table, IItem& row,
+                      const SqlFilter& filter);
   virtual void Delete(const ITable& table, const SqlFilter& filter);
   virtual int64_t ExecuteSql(const std::string& sql) = 0;
   virtual size_t Count(const ITable& table, const SqlFilter& filter);
@@ -92,6 +93,7 @@ class IDatabase {
   [[nodiscard]] virtual bool IsDataTypeString(DataType type) = 0;
 
  [[nodiscard]] virtual std::string MakeDateValue(const IAttribute& attr) const;
+
  private:
   DbType type_of_database_ = DbType::TypeGeneric;
   std::string name_; ///< Database name

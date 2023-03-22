@@ -46,12 +46,11 @@ class IAttribute {
   /** \brief Checks if the value is an unsigned number.
    *
    * Checks if a value is an unsigned number. Typically used to check
-   * if a date and time value was added as an ISO time string or as
-   * namo-seconds since 1970.
-   * @return True if the value string is a number.
+   * if a DtDate value was added as an ISO time string or as (uint64_t)
+   * nano-seconds since 1970.
+   * @return True if the value string is an unsigned number.
    */
   [[nodiscard]] bool IsValueUnsigned() const;
-
 
   [[nodiscard]] bool IsValueEmpty() const { ///< Returns true if the value is an empty string
     return value_.empty();

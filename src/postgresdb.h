@@ -24,8 +24,6 @@ public:
   bool Close(bool commit) override;
   [[nodiscard]] bool IsOpen() const override;
 
-  void Insert(const ITable& table, IItem& row, const SqlFilter& filter) override;
-  void Update(const ITable& table, IItem& row, const SqlFilter& filter) override;
   int64_t ExecuteSql(const std::string& sql) override;
 
   void FetchNameMap(const ITable& table, IdNameMap &dest_list,

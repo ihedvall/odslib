@@ -207,14 +207,17 @@ sqlite3 *SqliteDatabase::Sqlite3() {
 }
 
 
+void SqliteDatabase::ConnectionInfo(const std::string &info) {
+  IDatabase::ConnectionInfo(info); // May be changed by the filename function
+  FileName(info);
+}
 
 void SqliteDatabase::FileName(const std::string &filename) {
-
   // Seems that the SQLITE is sensible about the slashes
   try {
     std::filesystem::path file(filename);
     file.make_preferred();
-    ConnectionInfo(file.string());
+    IDatabase::ConnectionInfo(file.string());
     if (Name().empty()) {
       Name(file.stem().string());
     }
@@ -245,164 +248,7 @@ bool SqliteDatabase::Create(const IModel &model) {
 
 
 
-void SqliteDatabase::Insert(const ITable &table, IItem &row, const SqlFilter& filter) {
-  if (!IsOpen()) {
-    throw std::runtime_error("The database is not open");
-  }
 
-  const auto &column_list = table.Columns();
-  const auto* column_id = table.GetColumnByBaseName("id");
-  if (table.DatabaseName().empty() || column_list.empty() || column_id == nullptr) {
-    return;
-  }
-
-  // If filter is in use, do a select first and check if the
-  // item already exist. If so, do not insert a new item.
-  if (!filter.IsEmpty()) {
-    std::ostringstream select_sql;
-    select_sql << "SELECT " << column_id->DatabaseName() << " FROM "
-               << table.DatabaseName()
-               << " " << filter.GetWhereStatement();
-
-    SqliteStatement select(database_, select_sql.str());
-    if (select.Step()) {
-      const auto index = select.Value<int64_t>(0);
-      row.ItemId(index);
-      return;
-    }
-  }
-
-  std::ostringstream insert;
-  insert << "INSERT INTO " << table.DatabaseName() << " (";
-  bool first1 = true;
-  for (const auto &col1: column_list) {
-    if (IEquals(col1.BaseName(), "id") || col1.DatabaseName().empty()) {
-      continue;
-    }
-    if (!first1) {
-      insert << ",";
-    } else {
-      first1 = false;
-    }
-    insert << col1.DatabaseName();
-  }
-  insert << ") VALUES (";
-
-  bool first2 = true;
-  for (const auto &col2: column_list) {
-    if (IEquals(col2.BaseName(), "id") || col2.DatabaseName().empty()) {
-      continue;
-    }
-    if (!first2) {
-      insert << ",";
-    } else {
-      first2 = false;
-    }
-    const auto *item = row.GetAttribute(col2.ApplicationName());
-    if (item != nullptr) { // The attribute has been set
-      if (col2.DataType() == DataType::DtDate) {
-        insert << MakeDateValue(*item);
-      } else if (col2.IsString()) {
-        const auto val = item->Value<std::string>();
-        if (val.empty() && !col2.Obligatory() && col2.DefaultValue().empty()) {
-          insert << "NULL";
-        } else {
-          auto *value = sqlite3_mprintf("%Q", val.c_str());
-          insert << value;
-          sqlite3_free(value);
-        }
-      } else if (col2.ReferenceId() > 0 && item->Value<int64_t>() <= 0) {
-        insert << "NULL";
-      } else {
-        insert << item->Value<std::string>();
-      }
-    } else if (IEquals(col2.BaseName(),"ao_created") || IEquals(col2.BaseName(), "version_date")) {
-      // If these columns isn't set, then set them to 'now'. Normally are these set to auto generated
-      // Note that 'ao_last_modified' is set to null at insert and set at update.
-      insert << "datetime('now')";
-    } else if (!col2.DefaultValue().empty()) {
-      if (col2.IsString()) {
-        auto *value = sqlite3_mprintf("%Q", col2.DefaultValue().c_str());
-        insert << value;
-        sqlite3_free(value);
-      } else {
-        insert << col2.DefaultValue();
-      }
-    } else if (col2.Obligatory()) {
-      if (col2.IsString()) {
-        auto *value = sqlite3_mprintf("%Q", "");
-        insert << value;
-        sqlite3_free(value);
-      } else {
-        insert << "0";
-      }
-    } else {
-      insert << "NULL";
-    }
-  }
-  insert << ")";
-  ExecuteSql(insert.str());
-  const auto index = sqlite3_last_insert_rowid(database_);
-  row.ItemId(index);
-}
-
-void SqliteDatabase::Update(const ITable &table, IItem &row, const SqlFilter& filter) {
-  if (!IsOpen()) {
-    throw std::runtime_error("The database is not open");
-  }
-
-  const auto &column_list = table.Columns();
-  if (table.DatabaseName().empty() || column_list.empty()) {
-    return;
-  }
-
-  std::ostringstream update;
-  update << "UPDATE " << table.DatabaseName() << " SET ";
-  bool first = true;
-  for (const auto &col: column_list) {
-    if (col.DatabaseName().empty() || IEquals(col.BaseName(), "id")) {
-      continue;
-    }
-
-    const auto *attr = row.GetAttribute(col.ApplicationName());
-    if (attr != nullptr) {
-      // Set the attribute value
-      if (!first) {
-        update << ",";
-      } else {
-        first = false;
-      }
-      update << col.DatabaseName() << "=";
-
-      const std::string val = attr->Value<std::string>();
-      if (col.DataType() == DataType::DtDate) {
-        update << MakeDateValue(*attr);
-      } else if (col.IsString()) {
-        if (val.empty() && !col.Obligatory()) {
-          update << "NULL";
-        } else {
-          auto *value = sqlite3_mprintf("%Q", val.c_str());
-          update << value;
-          sqlite3_free(value);
-        }
-      } else {
-        update << val;
-      }
-    } else if (IEquals(col.BaseName(), "ao_last_modified") ||
-               IEquals(col.BaseName(), "version_date")) {
-        // Automatic fill with current date and time
-      if (!first) {
-        update << ",";
-      } else {
-        first = false;
-      }
-      update << col.DatabaseName() << "= datetime('now')";
-    }
-  }
-
-  update << " " << filter.GetWhereStatement();
-  ExecuteSql(update.str());
-}
 
 bool SqliteDatabase::ReadSvcEnumTable(IModel &model) {
   try {
@@ -818,6 +664,9 @@ bool SqliteDatabase::IsDataTypeString(DataType type) {
   return DataTypeToDbString(type) == "TEXT";
 }
 
+const std::string &SqliteDatabase::FileName() const {
+  return IDatabase::ConnectionInfo();
+}
 
 } // end namespace ods
 

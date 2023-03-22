@@ -196,7 +196,6 @@ std::string MakeBlobString(const std::vector<uint8_t> &blob) {
   return temp.str();
 }
 
-
 std::string IDatabase::MakeDateValue(const IAttribute &attr) const {
   std::string temp;
   if (attr.IsValueUnsigned()) {
@@ -214,11 +213,16 @@ std::string IDatabase::MakeDateValue(const IAttribute &attr) const {
     return "NULL";
   } else {
     temp = attr.Value<std::string>();
+    if (IEquals(temp,"CURRENT_", 8)) {
+      const auto now = TimeStampToNs();
+      temp = NsToIsoTime(now, 0);
+    }
   }
   std::ostringstream temp_dotted;
   temp_dotted << "'" << temp << "'";
   return temp_dotted.str();
 }
+
 
 void IDatabase::Vacuum() {
   // By default, this function doesn't do anything.
@@ -711,6 +715,178 @@ void IDatabase::AddComments(const ITable &table) {
   } catch (const std::exception& err) {
     LOG_ERROR() << "Failed to insert comments, Error: " << err.what();
   }
+}
+
+void IDatabase::ConnectionInfo(const std::string &info) {
+  connection_info_ = info;
+}
+
+void IDatabase::Insert(const ITable &table, IItem &row, const SqlFilter& filter) {
+  if (!IsOpen()) {
+    throw std::runtime_error("The database is not open");
+  }
+
+  const auto &column_list = table.Columns();
+  const auto* column_id = table.GetColumnByBaseName("id");
+  if (table.DatabaseName().empty() || column_list.empty() || column_id == nullptr) {
+    return;
+  }
+
+  // If filter is in use, do a select first and check if the
+  // item already exist. If so, do not insert a new item.
+  if (!filter.IsEmpty()) {
+    std::ostringstream select;
+    select << "SELECT " << column_id->DatabaseName() << " FROM "
+           << table.DatabaseName() << " "
+           << filter.GetWhereStatement();
+
+    const auto idx = ExecuteSql(select.str());
+    if (idx != 0) {
+      row.ItemId(idx);
+      return;
+    }
+  }
+
+  std::ostringstream insert;
+  std::ostringstream values;
+  insert << "INSERT INTO " << table.DatabaseName() << " (";
+  bool first = true;
+  for (const auto &col: column_list) {
+    if (IEquals(col.BaseName(), "id") || col.DatabaseName().empty()) {
+      continue;
+    }
+    if (!first) {
+      insert << ",";
+      values << ",";
+    } else {
+      first = false;
+    }
+    insert << col.DatabaseName();
+    const auto *attr = row.GetAttribute(col.ApplicationName());
+    if (attr != nullptr) {
+      // The item has been set by the user
+      switch (col.DataType()) {
+      case DataType::DtDate:
+        values << MakeDateValue(*attr);
+        break;
+
+      case DataType::DtString:
+      case DataType::DtExternalRef: {
+        const auto val = attr->Value<std::string>();
+        if (val.empty() && !col.Obligatory() && col.DefaultValue().empty()) {
+          values << "NULL";
+        } else {
+          auto *value = sqlite3_mprintf("%Q", val.c_str());
+          values << value;
+          sqlite3_free(value);
+        }
+        break;
+      }
+
+      default:
+        if (col.ReferenceId() > 0 && attr->Value<int64_t>() <= 0) {
+          values << "NULL";
+        } else {
+          values << attr->Value<std::string>();
+        }
+        break;
+      }
+    } else {
+      // Item has not been set by the user. First check the DtDate columns
+      if (IEquals(col.BaseName(), "ao_created") ||
+          IEquals(col.BaseName(), "version_date") ||
+          IEquals(col.BaseName(), "ao_last_modified")) {
+        // If these columns isn't set, then set them to 'now'.
+        // Normally are these set to auto generated Note that
+        // 'ao_last_modified' is set to null at insert and set at update.
+        const auto now = TimeStampToNs();
+        const auto timestamp = NsToIsoTime(now, 0);
+        values << "'" << timestamp << "'";
+      } else if (!col.DefaultValue().empty()) {
+        if (col.IsString()) {
+          auto *value = sqlite3_mprintf("%Q", col.DefaultValue().c_str());
+          values << value;
+          sqlite3_free(value);
+        } else {
+          values << col.DefaultValue();
+        }
+      } else if (col.Obligatory()) {
+        if (col.IsString()) {
+          auto *value = sqlite3_mprintf("%Q", "");
+          values << value;
+          sqlite3_free(value);
+        } else {
+          values << "0";
+        }
+      } else {
+        values << "NULL";
+      }
+    }
+  }
+  insert << ") VALUES (" << values.str() << ") RETURNING "
+         << column_id->DatabaseName();
+
+  const auto idx = ExecuteSql(insert.str());
+  row.ItemId(idx);
+}
+
+
+void IDatabase::Update(const ITable &table, IItem &row, const SqlFilter& filter) {
+  if (!IsOpen()) {
+    throw std::runtime_error("The database is not open");
+  }
+
+  const auto &column_list = table.Columns();
+  if (table.DatabaseName().empty() || column_list.empty()) {
+    return;
+  }
+
+  std::ostringstream update;
+  update << "UPDATE " << table.DatabaseName() << " SET ";
+  bool first = true;
+  for (const auto &col: column_list) {
+    if (col.DatabaseName().empty() || IEquals(col.BaseName(), "id")) {
+      continue;
+    }
+
+    const auto *attr = row.GetAttribute(col.ApplicationName());
+    if (attr != nullptr) {
+      // Set the attribute value
+      if (!first) {
+        update << ",";
+      } else {
+        first = false;
+      }
+      update << col.DatabaseName() << "=";
+
+      const std::string val = attr->Value<std::string>();
+      if (col.DataType() == DataType::DtDate) {
+        update << MakeDateValue(*attr);
+      } else if (col.IsString()) {
+        if (val.empty() && !col.Obligatory()) {
+          update << "NULL";
+        } else {
+          auto *value = sqlite3_mprintf("%Q", val.c_str());
+          update << value;
+          sqlite3_free(value);
+        }
+      } else {
+        update << val;
+      }
+    } else if (IEquals(col.BaseName(), "ao_last_modified") ||
+               IEquals(col.BaseName(), "version_date")) {
+      // Automatic fill with current date and time
+      if (!first) {
+        update << ",";
+      } else {
+        first = false;
+      }
+      update << col.DatabaseName() << "= datetime('now')";
+    }
+  }
+
+  update << " " << filter.GetWhereStatement();
+  ExecuteSql(update.str());
 }
 
 } // end namespace ods

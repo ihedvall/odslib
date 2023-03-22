@@ -1,7 +1,7 @@
 ﻿<?xml version='1.0' encoding='UTF-8' standalone='yes'?>
 <OdsModel>
   <Version>2</Version>
-  <NAme>EventLogDB</NAme>
+  <Name>EventLogDB</Name>
   <ApplicationVersion>1.0</ApplicationVersion>
   <Description>Database configuration for event log database</Description>
   <CreatedBy>Ingemar Hedvall</CreatedBy>
@@ -117,6 +117,7 @@
       <DisplayName>Name</DisplayName>
       <BaseName>name</BaseName>
       <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
     </Attribute>
     <Attribute name='Description' column='DESCRIPTION'>
       <DisplayName>Description</DisplayName>
@@ -278,10 +279,12 @@
       <Type>DtLongLong</Type>
       <Flags unique='true' auto='true' index='true'>133</Flags>
     </Attribute>
-    <Attribute name='Name' column='NAME'>
+    <Attribute name='Identity' column='NAME'>
+      <Description>Structured data identity includeing stem and enterprise id</Description>
       <DisplayName>Name</DisplayName>
       <BaseName>name</BaseName>
       <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
     </Attribute>
     <Attribute name='Description' column='DESCRIPTION'>
       <DisplayName>Description</DisplayName>

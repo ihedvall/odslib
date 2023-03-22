@@ -58,7 +58,8 @@ class IEnvironment {
   virtual bool CreateDb();
   virtual bool InitDb();
 
-  /** \brief Support function that adds a row into a table that have aunique name.
+  /** \brief Support function that adds a row into a table
+   * that have an unique name.
    *
    * Adds a row into a table
    * @param table

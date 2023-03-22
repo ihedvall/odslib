@@ -4,15 +4,16 @@
  */
 
 #pragma once
-#include <ods/ienvironmentcreator.h>
+#include <memory>
+#include "ods/ienvironment.h"
 #include <util/stringutil.h>
 namespace ods::gui {
 
 using EnvironmentList = std::map<std::string, std::unique_ptr<IEnvironment>, util::string::IgnoreCase>;
 
-class EnvCreator : public ods::IEnvironmentCreator {
+class EnvCreator  {
  public:
-  [[nodiscard]] std::unique_ptr<IEnvironment> CreateEnvironment(EnvironmentType type) override;
+  [[nodiscard]] static std::unique_ptr<IEnvironment> CreateEnvironment(EnvironmentType type);
   static std::unique_ptr<IEnvironment> CreateFromConfig(const std::string& name);
   static void SaveToConfig(const IEnvironment* env);
 

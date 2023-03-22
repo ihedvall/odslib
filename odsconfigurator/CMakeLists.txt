@@ -47,6 +47,7 @@ endif()
 
 target_link_libraries(odsconfig PRIVATE ods)
 target_link_libraries(odsconfig PRIVATE util)
+target_link_libraries(odsconfig PRIVATE workflow)
 target_link_libraries(odsconfig PRIVATE ${EXPAT_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${wxWidgets_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${Boost_LIBRARIES})

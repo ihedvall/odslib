@@ -37,6 +37,16 @@ const IAttribute *IItem::GetAttribute(const std::string &name) const {
   return itr == attribute_list_.cend() ? nullptr : &*itr;
 }
 
+IAttribute *IItem::GetAttribute(const std::string &name) {
+  if (name.empty()) {
+    return nullptr;
+  }
+  auto itr = std::ranges::find_if(attribute_list_, [&] (const auto& item) {
+    return IEquals(name, item.Name());
+  });
+  return itr == attribute_list_.end() ? nullptr : &*itr;
+}
+
 const IAttribute *IItem::GetBaseAttribute(const std::string &base_name) const {
   if (base_name.empty()) {
     return nullptr;
@@ -45,6 +55,16 @@ const IAttribute *IItem::GetBaseAttribute(const std::string &base_name) const {
     return IEquals(base_name, item.BaseName());
   });
   return itr == attribute_list_.cend() ? nullptr : &*itr;
+}
+
+IAttribute *IItem::GetBaseAttribute(const std::string &base_name) {
+  if (base_name.empty()) {
+    return nullptr;
+  }
+  auto itr = std::ranges::find_if(attribute_list_, [&] (const auto& item) {
+    return IEquals(base_name, item.BaseName());
+  });
+  return itr == attribute_list_.end() ? nullptr : &*itr;
 }
 
 bool IItem::ExistAttribute(const std::string &name) const {

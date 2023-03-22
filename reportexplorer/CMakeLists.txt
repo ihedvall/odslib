@@ -25,9 +25,8 @@ add_executable(reportexplorer
         src/selectedcomparator.cpp src/selectedcomparator.h
         src/fetchvalue.cpp src/fetchvalue.h)
 
-
 target_include_directories(reportexplorer PRIVATE ${wxWidgets_INCLUDE_DIRS})
-target_include_directories(reportexplorer  PRIVATE ${Boost_INCLUDE_DIRS})
+target_include_directories(reportexplorer PRIVATE ${Boost_INCLUDE_DIRS})
 target_include_directories(reportexplorer PRIVATE ${SQLite3_INCLUDE_DIRS})
 target_include_directories(reportexplorer PRIVATE ${mdflib_SOURCE_DIR}/include)
 target_include_directories(reportexplorer PRIVATE ${utillib_SOURCE_DIR}/include)
@@ -48,6 +47,7 @@ endif()
 target_link_libraries(reportexplorer PRIVATE ods)
 target_link_libraries(reportexplorer PRIVATE mdf)
 target_link_libraries(reportexplorer PRIVATE util)
+target_link_libraries(reportexplorer PRIVATE workflow)
 target_link_libraries(reportexplorer PRIVATE ${EXPAT_LIBRARIES})
 target_link_libraries(reportexplorer PRIVATE ${wxWidgets_LIBRARIES})
 target_link_libraries(reportexplorer PRIVATE ${Boost_LIBRARIES})

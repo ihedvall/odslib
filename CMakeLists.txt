@@ -19,6 +19,7 @@ set(CMAKE_DEBUG_POSTFIX d)
 
 include ("script/utillib.cmake")
 include ("script/mdflib.cmake")
+include ("script/workflowlib.cmake")
 include("script/boost.cmake")
 include("script/sqlite3.cmake")
 include("script/postgresql.cmake")
@@ -47,11 +48,11 @@ add_library(ods STATIC
         src/iitem.cpp include/ods/iitem.h
         src/ienvironment.cpp include/ods/ienvironment.h
         src/testdirectory.cpp src/testdirectory.h
-        src/ienvironmentcreator.cpp include/ods/ienvironmentcreator.h
+        src/odsfactory.cpp include/ods/odsfactory.h
         src/sqlfilter.cpp include/ods/sqlfilter.h
         src/eventlogdb.cpp src/eventlogdb.h
         src/postgresdb.cpp src/postgresdb.h
-        src/postgresstatement.cpp src/postgresstatement.h)
+        src/postgresstatement.cpp src/postgresstatement.h src/sysloginserter.cpp src/sysloginserter.h)
 
 
 
@@ -60,6 +61,7 @@ target_include_directories(ods PRIVATE ${SQLite3_INCLUDE_DIRS})
 target_include_directories(ods PRIVATE ${PostgreSQL_INCLUDE_DIRS})
 target_include_directories(ods PRIVATE ${utillib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${mdflib_SOURCE_DIR}/include)
+target_include_directories(ods PRIVATE ${workflowlib_SOURCE_DIR}/include)
 
 target_include_directories(ods PUBLIC
         $<INSTALL_INTERFACE:include>

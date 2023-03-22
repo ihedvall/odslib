@@ -21,7 +21,9 @@ class SqliteDatabase : public IDatabase {
   explicit SqliteDatabase(const std::string& filename);
   ~SqliteDatabase() override;
 
-  [[nodiscard]] const std::string& FileName() const {return ConnectionInfo();}
+  void ConnectionInfo(const std::string& info) override;
+
+  [[nodiscard]] const std::string& FileName() const;
   void FileName(const std::string& filename);
 
   bool Open() override;
@@ -30,9 +32,6 @@ class SqliteDatabase : public IDatabase {
   [[nodiscard]] bool IsOpen() const override;
 
   [[nodiscard]] bool Create(const IModel& model) override;
-
-  void Insert(const ITable& table, IItem& row, const SqlFilter& filter) override;
-  void Update(const ITable& table, IItem& row, const SqlFilter& filter) override;
 
   int64_t ExecuteSql(const std::string& sql) override;
 
