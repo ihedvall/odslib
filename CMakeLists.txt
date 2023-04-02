@@ -52,7 +52,9 @@ add_library(ods STATIC
         src/sqlfilter.cpp include/ods/sqlfilter.h
         src/eventlogdb.cpp src/eventlogdb.h
         src/postgresdb.cpp src/postgresdb.h
-        src/postgresstatement.cpp src/postgresstatement.h src/sysloginserter.cpp src/sysloginserter.h)
+        src/postgresstatement.cpp src/postgresstatement.h
+        src/sysloginserter.cpp src/sysloginserter.h
+        src/odsworkflowserver.cpp include/ods/odsworkflowserver.h)
 
 
 
