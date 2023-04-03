@@ -6,6 +6,13 @@
 #include "testdirectory.h"
 #include "sqlitedatabase.h"
 #include "postgresdb.h"
+#include "sysloginserter.h"
+#include <util/stringutil.h>
+#include <array>
+#include "template_names.icc"
+
+using namespace workflow;
+using namespace util::string;
 
 namespace ods {
 
@@ -45,5 +52,25 @@ std::unique_ptr<IDatabase> OdsFactory::CreateDatabase(DbType type) {
   return database;
 }
 
+std::unique_ptr<workflow::IRunner>
+OdsFactory::CreateTemplateTask(const workflow::IRunner &source) {
+  std::unique_ptr<IRunner> runner;
+  const auto& template_name = source.Template();
+  if (IEquals(template_name, kSyslogInserter.data())) {
+      auto temp = std::make_unique<SyslogInserter>(source);
+      runner = std::move(temp);
+  }
+  return runner;
+}
+
+void OdsFactory::CreateDefaultTemplateTask(workflow::WorkflowServer &server) {
+  std::array<std::unique_ptr<IRunner>,1> temp_list = {
+      std::make_unique<SyslogInserter>(),
+  };
+
+  for (auto& temp : temp_list) {
+      server.AddTemplate(*temp);
+  }
+}
 
 } // end namespace

@@ -7,6 +7,8 @@
 #include <memory>
 #include "ods/idatabase.h"
 #include "ods/ienvironment.h"
+#include <workflow/irunner.h>
+#include <workflow/workflowserver.h>
 namespace ods {
 
 class OdsFactory {
@@ -19,6 +21,10 @@ class OdsFactory {
   [[nodiscard]] static std::unique_ptr<IDatabase>
                 CreateDatabase(DbType type);
 
+  [[nodiscard]] static std::unique_ptr<workflow::IRunner>
+                CreateTemplateTask(const workflow::IRunner& source);
+
+   static void CreateDefaultTemplateTask(workflow::WorkflowServer& server);
 };
 
 } // end namespace

@@ -8,7 +8,9 @@ project(odslib
 
 option(BUILD_SHARED_LIBS "Static libraries are preferred" OFF)
 option(BUILD_STATIC_LIBS "Static libraries are normally used" ON)
-option(BUILD_DOC "If doxygen is installed, then build documentation in Release mode" ON)
+option(ODS_DOC "If doxygen is installed, then build documentation in Release mode" OFF)
+option(ODS_TOOLS "If doxygen is installed, then build documentation in Release mode" ON)
+option(ODS_TEST "If doxygen is installed, then build documentation in Release mode" ON)
 
 if (NOT COMP_DIR)
     set(COMP_DIR "k:")
@@ -54,7 +56,7 @@ add_library(ods STATIC
         src/postgresdb.cpp src/postgresdb.h
         src/postgresstatement.cpp src/postgresstatement.h
         src/sysloginserter.cpp src/sysloginserter.h
-        src/odsworkflowserver.cpp include/ods/odsworkflowserver.h)
+        )
 
 
 
@@ -85,7 +87,7 @@ install(TARGETS ods
         RUNTIME DESTINATION ods/bin
         PUBLIC_HEADER DESTINATION ods/include/ods)
 
-if (wxWidgets_FOUND )
+if (wxWidgets_FOUND AND ODS_TOOLS)
     add_subdirectory(odsconfigurator)
     add_subdirectory(reportexplorer)
 endif()
