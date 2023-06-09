@@ -100,7 +100,7 @@
       <Type>DtDate</Type>
       <Flags auto='true'>4</Flags>
     </Attribute>
-    <Attribute name='DisplayName' column='DISP_NAME'>
+    <Attribute name='DisplayName' column='DISPNAME'>
       <Description>Display name of the host</Description>
       <DisplayName>Host Name</DisplayName>
       <Type>DtString</Type>
@@ -119,6 +119,11 @@
       <Type>DtString</Type>
       <Flags unique='true'>1</Flags>
     </Attribute>
+    <Attribute name='DisplayName' column='DISPNAME'>
+      <Description>User friendly display name</Description>
+      <DisplayName>Application</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
     <Attribute name='Description' column='DESCRIPTION'>
       <DisplayName>Description</DisplayName>
       <BaseName>description</BaseName>
@@ -135,11 +140,6 @@
       <BaseName>ao_last_modified</BaseName>
       <Type>DtDate</Type>
       <Flags auto='true'>4</Flags>
-    </Attribute>
-    <Attribute name='DisplayName' column='DISP_NAME'>
-      <Description>User friendly display name</Description>
-      <DisplayName>Application</DisplayName>
-      <Type>DtString</Type>
     </Attribute>
   </Element>
   <Element base='AoUnit' id='32' name='Unit' table='UNIT'>
@@ -316,6 +316,7 @@
     </Attribute>
   </Element>
   <Element base='AoAny' id='31' name='SdName' table='SD_NAME' parent='30'>
+    <Description>Defines the name, type and unit of a data value.</Description>
     <Attribute name='Index' column='IID'>
       <DisplayName>Item ID</DisplayName>
       <BaseName>id</BaseName>
@@ -327,6 +328,11 @@
       <BaseName>name</BaseName>
       <Type>DtString</Type>
       <Flags unique='true'>1</Flags>
+    </Attribute>
+    <Attribute name='DisplayName' column='DISPNAME'>
+      <Description>User friendly name typically used as label in GUI.</Description>
+      <DisplayName>Label</DisplayName>
+      <Type>DtString</Type>
     </Attribute>
     <Attribute name='Description' column='DESCRIPTION'>
       <DisplayName>Description</DisplayName>

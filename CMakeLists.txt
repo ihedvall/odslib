@@ -24,15 +24,25 @@ include ("script/mdflib.cmake")
 include ("script/workflowlib.cmake")
 include("script/boost.cmake")
 include("script/sqlite3.cmake")
-include("script/postgresql.cmake")
-#include("script/zlib.cmake")
 include("script/openssl.cmake")
+include("script/postgresql.cmake")
+include("script/protobuf.cmake")
+include("script/grpc.cmake")
+#include("script/zlib.cmake")
+
 include("script/wxwidgets.cmake")
 
 
 include("script/googletest.cmake")
 include("script/doxygen.cmake")
 
+
+#cmake_print_variables(PROTO_SRCS)
+#cmake_print_variables(PROTO_HDRS)
+#cmake_print_variables(CMAKE_CURRENT_BINARY_DIR) # Path to the generated cpp files
+set(PROTO_FILES
+        proto/syslogservice.proto
+        )
 add_library(ods STATIC
         src/itable.cpp include/ods/itable.h
         src/idatabase.cpp include/ods/idatabase.h
@@ -56,9 +66,33 @@ add_library(ods STATIC
         src/postgresdb.cpp src/postgresdb.h
         src/postgresstatement.cpp src/postgresstatement.h
         src/sysloginserter.cpp src/sysloginserter.h
-        )
+        src/syslogrpcserver.cpp src/syslogrpcserver.h
+        src/syslogservice.cpp src/syslogservice.h
+        ${PROTO_FILES}
+        src/syslogrpcclient.cpp src/syslogrpcclient.h)
 
+protobuf_generate(
+        TARGET ods
+        OUT_VAR PROTO_GENERATED_FILES
+        LANGUAGE cpp
+        #IMPORT_DIRS ${CMAKE_CURRENT_DIR}/proto
+        #PROTOS proto/syslogservice.proto
+        PROTOC_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+cmake_print_variables(PROTO_GENERATED_FILES)
+#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
+#        proto/syslogservice.proto)
 
+protobuf_generate(
+        TARGET ods
+        OUT_VAR GRPC_GENERATED_FILES
+        LANGUAGE grpc
+        GENERATE_EXTENSIONS .grpc.pb.h .grpc.pb.cc
+        PLUGIN "protoc-gen-grpc=\$<TARGET_FILE:gRPC::grpc_cpp_plugin>"
+        #PLUGIN_OPTIONS "generate_mock_code=true"
+        #IMPORT_DIRS ${CMAKE_CURRENT_DIR}/proto
+        #PROTOS proto/syslogservice.proto
+        PROTOC_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR} )
+cmake_print_variables(GRPC_GENERATED_FILES)
 
 target_include_directories(ods PRIVATE ${Boost_INCLUDE_DIRS})
 target_include_directories(ods PRIVATE ${SQLite3_INCLUDE_DIRS})
@@ -66,13 +100,16 @@ target_include_directories(ods PRIVATE ${PostgreSQL_INCLUDE_DIRS})
 target_include_directories(ods PRIVATE ${utillib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${mdflib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${workflowlib_SOURCE_DIR}/include)
-
+target_include_directories(ods PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(ods PRIVATE ${Protobuf_INCLUDE_DIRS})
+target_include_directories(ods PRIVATE ${gRPC_INCLUDE_DIRS} )
+target_include_directories(ods PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(ods PUBLIC
         $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         )
 
-target_compile_definitions(util PRIVATE XML_STATIC)
+target_compile_definitions(ods PRIVATE XML_STATIC)
 
 set(ODS_PUBLIC_HEADERS include/ods/itable.h)
 
@@ -92,16 +129,16 @@ if (wxWidgets_FOUND AND ODS_TOOLS)
     add_subdirectory(reportexplorer)
 endif()
 
-if (GTEST_FOUND)
+if (GTEST_FOUND AND ODS_TEST)
     enable_testing()
     add_subdirectory(test)
 endif()
 
-if (DOXYGEN_FOUND AND (CMAKE_BUILD_TYPE MATCHES "^[Rr]elease") )
-    set(DOXYGEN_RECURSIVE YES)
+if (DOXYGEN_FOUND AND ODS_DOC AND (CMAKE_BUILD_TYPE MATCHES "^[Rr]elease") )
+    #set(DOXYGEN_RECURSIVE YES)
     set(DOXYGEN_RECURSIVE NO)
     set(DOXYGEN_REPEAT_BRIEF NO)
-    set(DOXYGEN_PROJECT_NAME "MDFLib")
+    set(DOXYGEN_PROJECT_NAME "OdsLib")
     # set(DOXYGEN_HTML_EXTRA_STYLESHEET doxygen/utillib.css)
     # set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs/manual)
     doxygen_add_docs(doc_libods ALL

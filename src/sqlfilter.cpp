@@ -200,23 +200,24 @@ std::string SqlFilter::GetWhereStatement() const {
       where << " AND ";
     }
     if (ignore_case) {
-      where << "LOWER(";
+      where << "LOWER(" << item.column_name << ")";
+    } else {
+      where << item.column_name;
     }
 
-    where << item.column_name;
-
-    if (ignore_case ) {
-      where << ")";
-    }
     where << ConditionString(item.condition);
 
-    where << item.value;
+    if (ignore_case) {
+      where << "LOWER(" << item.value << ")";
+    } else {
+      where << item.value;
+    }
 
     ++count;
   }
 
   if (!order_by_list_.empty()) {
-    where << " " << GetOrderByStatement();
+    where << " " << GetOrderByStatement(); // The function also adds limit
   }
   return where.str();
 }
@@ -266,7 +267,7 @@ std::string SqlFilter::GetOrderByStatement() const {
   return order_by.str();
 }
 
-void SqlFilter::AddLimit(SqlCondition condition, int64_t value) {
+void SqlFilter::AddLimit(SqlCondition condition, uint64_t value) {
   SqlFilterItem item { "", condition, std::to_string(value)};
   limit_list_.emplace_back(item);
 }

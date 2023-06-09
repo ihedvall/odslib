@@ -590,13 +590,13 @@ std::string IDatabase::MakeCreateTableSql(const ods::IModel& model,
 bool IDatabase::InsertModelEnvironment(const IModel &model) {
   const auto* env_table = model.GetBaseId(BaseId::AoEnvironment);
   if (env_table == nullptr) {
-    LOG_DEBUG() << "No environment table in DB. Assume no model units";
+    LOG_DEBUG() << "No environment table in DB. Assume no environment";
     return true;
   }
 
   const auto* name_column = env_table->GetColumnByBaseName("name");
   if (name_column == nullptr || env_table->DatabaseName().empty()) {
-    LOG_DEBUG() << "No environment table in DB.";
+    LOG_DEBUG() << "No database name column in DB.";
     return true;
   }
 
@@ -672,7 +672,7 @@ size_t IDatabase::Count(const ITable &table, const SqlFilter& filter) {
   }
 
   std::ostringstream sql;
-  sql << "COUNT(*)  FROM " << table.DatabaseName() ;
+  sql << "SELECT COUNT(*)  FROM " << table.DatabaseName() ;
   if (!filter.IsEmpty()) {
     sql << " " << filter.GetWhereStatement();
   }
@@ -721,6 +721,19 @@ void IDatabase::ConnectionInfo(const std::string &info) {
   connection_info_ = info;
 }
 
+int64_t IDatabase::Exists(const ITable &table, const SqlFilter &filter) {
+  if (filter.IsEmpty()) {
+    return 0;
+  }
+  IdNameMap name_list;
+  FetchNameMap(table, name_list, filter);
+  if (name_list.empty()) {
+    return 0;
+  }
+  const auto& [index, name] = *name_list.cbegin();
+  return index;
+}
+
 void IDatabase::Insert(const ITable &table, IItem &row, const SqlFilter& filter) {
   if (!IsOpen()) {
     throw std::runtime_error("The database is not open");
@@ -730,21 +743,6 @@ void IDatabase::Insert(const ITable &table, IItem &row, const SqlFilter& filter)
   const auto* column_id = table.GetColumnByBaseName("id");
   if (table.DatabaseName().empty() || column_list.empty() || column_id == nullptr) {
     return;
-  }
-
-  // If filter is in use, do a select first and check if the
-  // item already exist. If so, do not insert a new item.
-  if (!filter.IsEmpty()) {
-    std::ostringstream select;
-    select << "SELECT " << column_id->DatabaseName() << " FROM "
-           << table.DatabaseName() << " "
-           << filter.GetWhereStatement();
-
-    const auto idx = ExecuteSql(select.str());
-    if (idx != 0) {
-      row.ItemId(idx);
-      return;
-    }
   }
 
   std::ostringstream insert;
@@ -888,6 +886,7 @@ void IDatabase::Update(const ITable &table, IItem &row, const SqlFilter& filter)
   update << " " << filter.GetWhereStatement();
   ExecuteSql(update.str());
 }
+
 
 } // end namespace ods
 

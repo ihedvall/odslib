@@ -32,6 +32,9 @@ public:
                      const SqlFilter& filter) override;
 
   PGconn* Connection() {return connection_;}
+  size_t FetchItems(const ITable &table, const SqlFilter &filter,
+                    std::function<void(IItem &)> OnItem) override;
+
 protected:
   [[nodiscard]] std::string DataTypeToDbString(DataType type) override;
   [[nodiscard]] bool IsDataTypeString(DataType type) override;

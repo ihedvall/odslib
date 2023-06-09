@@ -50,7 +50,7 @@ class SqlFilter {
   template <typename T>
   void AddWhere(const IColumn& column, SqlCondition condition, const T &value);
   void AddOrder(const IColumn& column, SqlCondition condition = SqlCondition::OrderByNone, const std::string&expression = {});
-  void AddLimit(SqlCondition condition , int64_t value);
+  void AddLimit(SqlCondition condition , uint64_t value);
 
   [[nodiscard]] std::string GetWhereStatement() const;
 

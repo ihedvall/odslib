@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <string>
+#include <functional>
 #include "ods/itable.h"
 #include "ods/iitem.h"
 #include "ods/sqlfilter.h"
@@ -44,6 +45,16 @@ class IDatabase {
   [[nodiscard]] virtual bool Create(const IModel& model);
   [[nodiscard]] virtual bool ReadModel(IModel& model);
 
+  /** \brief Returns a row index if item already exists.
+   *
+   * Return a database index if the item in the where
+   * statement exists. The SQL filter object may not be empty.
+   * @param table Reference to the database table.
+   * @param filter Reference to the filter with the where statement.
+   * @return The existing index or zero if not found.
+   */
+  [[nodiscard]] int64_t Exists(const ITable& table, const SqlFilter& filter);
+
   void Insert(const ITable& table, IItem& row,
                       const SqlFilter& filter);
   void Update(const ITable& table, IItem& row,
@@ -56,6 +67,19 @@ class IDatabase {
                             const SqlFilter& filter) = 0;
   virtual void FetchItemList(const ITable& table, ItemList &dest_list,
                              const SqlFilter& filter ) = 0;
+  /** \brief Fetch row by row and calls the onItem() function for each row.
+   *
+   * Function that is used to fetch row by row instead of allocating a list of
+   * all rows. This is typically used in RPC servers with a streaming
+   * interface where no list is needed afterward.
+   *
+   * @param table Reference to the table and its columns.
+   * @param filter Reference to the where filtering definition..
+   * @param OnItem Called for each row in the select statement.
+   * @returns Number of rows handled in call.
+   */
+  virtual size_t FetchItems(const ITable& table, const SqlFilter& filter,
+                          std::function<void(IItem&)> OnItem  ) = 0;
 
     /** \brief Optimize the database in size and performance.
      *

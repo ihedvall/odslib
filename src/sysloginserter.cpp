@@ -8,11 +8,11 @@
 #include <vector>
 #include <util/syslogmessage.h>
 #include <util/stringutil.h>
-#include <util/stringutil.h>
+#include <util/logstream.h>
 #include <workflow/iworkflow.h>
+#include "ods/sqlfilter.h"
 #include "ods/odsfactory.h"
 #include "ods/databaseguard.h"
-#include "ods/sqlfilter.h"
 
 #include "template_names.icc"
 
@@ -21,7 +21,7 @@ using namespace boost::program_options;
 using namespace util::syslog;
 using namespace util::string;
 using namespace util::time;
-
+using namespace util::log;
 using SyslogList = std::vector<SyslogMessage>;
 
 namespace ods {
@@ -30,6 +30,11 @@ SyslogInserter::SyslogInserter() {
   Name(kSyslogInserter.data());
   Template(kSyslogInserter.data());
   Description("Insert syslog messages into a database");
+  std::ostringstream temp;
+  temp << "--slot=" << data_slot_ << " ";
+  temp << "--dbtype=" << db_type_ << " ";
+  temp << "--connection=\"" << connection_string_ << "\"";
+  Arguments(temp.str());
 }
 
 SyslogInserter::SyslogInserter(const IRunner& source)
@@ -39,6 +44,12 @@ SyslogInserter::SyslogInserter(const IRunner& source)
 }
 
 void SyslogInserter::ParseArguments() {
+  std::string arguments = Arguments();
+  // If nor arguments are given, the copy the insert syslog task arguments.
+  if (const auto* inserter = GetRunnerByTemplateName(kSyslogInserter.data());
+      inserter != nullptr) {
+    arguments = inserter->Arguments();
+  }
   try {
     options_description desc("Available Arguments");
     desc.add_options() ("slot,S",
@@ -51,7 +62,7 @@ void SyslogInserter::ParseArguments() {
                        value<std::string>(&connection_string_),
                        "File name or connection string" );
 
-    const auto arg_list = split_winmain(Arguments());
+    const auto arg_list = split_winmain(arguments);
     basic_command_line_parser parser(arg_list);
     parser.options(desc);
     const auto opt = parser.run();
@@ -60,10 +71,10 @@ void SyslogInserter::ParseArguments() {
     notify(var_list);
     IsOk(true);
   } catch( const std::exception& err) {
-    std::ostringstream msg;
-    msg << "Initialization error. Error: " << err.what();
-    LastError(msg.str());
+    LastError("Parse argument error");
     IsOk(false);
+    LOG_ERROR() << "Parse argument error. Name: " << Name()
+                << ", Error: " << err.what();
   }
 }
 
@@ -81,13 +92,22 @@ void SyslogInserter::Init() {
       DatabaseGuard db_lock(*database_);
       const auto read = database_->ReadModel(model_);
       IsOk(read);
+      if (!read) {
+        LOG_ERROR() << "Failed to read the model from the database. Name: "
+                    << Name();
+      }
     } else {
       IsOk(false);
+      LOG_ERROR() << "Missing database. Name: " << Name();
     }
   } catch (const std::exception& err) {
     IsOk(false);
+    LOG_ERROR() << "Init error. Name: " << Name()
+                << ", Error: " << err.what();
   }
-
+  if (!IsOk()) {
+    LastError("Init error");
+  }
 }
 
 void SyslogInserter::Tick() {
@@ -98,24 +118,42 @@ void SyslogInserter::Tick() {
                                           nullptr;
   if (syslog_list == nullptr) {
     LastError("No syslog list found");
+    if (IsOk()) {
+      LOG_ERROR() << "Tick error. Name: " << Name()
+                  << ", Error: No syslog list found.";
+    }
     IsOk(false);
     return;
   }
   if (syslog_list->empty()) {
+    // Nothing to do. So no need to open the database.
     return;
   }
+
+  // OPen the database and insert all messages in the message queue.
   DatabaseGuard db_lock(*database_);
   if (!db_lock.IsOk()) {
     LastError("No database connection.");
+    if (IsOk()) {
+      LOG_ERROR() << "Tick database error. Name: " << Name()
+                  << ", Error: Database is not OK.";
+    }
     IsOk(false);
     return;
   }
   try {
-    for ( const auto& msg : *syslog_list) {
+    for ( auto& msg : *syslog_list) {
       InsertMessage(msg);
     }
+    IsOk(true);
   } catch( const std::exception& err) {
     db_lock.Rollback();
+    if (IsOk()) {
+      LOG_ERROR() << "Tick insert error. Name: " << Name()
+                  << ", Error: Failed to insert.";
+    }
+    LastError("Failed to insert into the database");
+    IsOk(false);
   }
 }
 
@@ -124,7 +162,7 @@ void SyslogInserter::Exit() {
   database_.reset();
 }
 
-void SyslogInserter::InsertMessage(const SyslogMessage &msg) {
+void SyslogInserter::InsertMessage(SyslogMessage &msg) {
 
   auto* table = model_.GetTableByName("Syslog");
   if (table == nullptr ) {
@@ -151,20 +189,25 @@ void SyslogInserter::InsertMessage(const SyslogMessage &msg) {
                       msg.MessageId());
 
   database_->Insert(*table, row, SqlFilter());
+
   const auto& sd_list = msg.DataList();
   for (const auto& data : sd_list) {
     InsertData(data, row.ItemId());
   }
+  msg.Index(row.ItemId());
 
+  std::lock_guard lock(last_message_locker_);
+  last_message_ = msg;
 }
 
 int64_t SyslogInserter::InsertHost(const std::string &hostname) {
   if (hostname.empty()) {
     return 0;
   }
-  if (const auto itr = host_cache_.find(hostname); itr != host_cache_.cend()) {
-    return itr->second;
+  if (const auto find = host_cache_.find(hostname); find != host_cache_.cend()) {
+    return find->second;
   }
+
   auto* table = model_.GetTableByName("Hostname");
   auto* column_name = table != nullptr ? table->GetColumnByBaseName("name")
                                        : nullptr;
@@ -174,21 +217,29 @@ int64_t SyslogInserter::InsertHost(const std::string &hostname) {
 
   SqlFilter filter;
   filter.AddWhere(*column_name, SqlCondition::EqualIgnoreCase, hostname);
+  auto idx = database_->Exists(*table, filter);
+  if (idx != 0) {
+    host_cache_.emplace(hostname, idx);
+    return idx;
+  }
 
   IItem row(table->ApplicationId());
   row.AppendAttribute(*table, true, "name", hostname);
   row.AppendAttribute(*table, false, "DisplayName", hostname);
   database_->Insert(*table,row,filter);
-
-  return row.ItemId();
+  idx = row.ItemId();
+  if (idx != 0) {
+    host_cache_.emplace(hostname, idx);
+  }
+  return idx;
 }
 
 int64_t SyslogInserter::InsertApplication(const std::string &app_name) {
   if (app_name.empty()) {
     return 0;
   }
-  if (const auto itr = app_cache_.find(app_name); itr != app_cache_.cend()) {
-    return itr->second;
+  if (const auto find = app_cache_.find(app_name); find != app_cache_.cend()) {
+    return find->second;
   }
   auto* table = model_.GetTableByName("Application");
   auto* column_name = table != nullptr ? table->GetColumnByBaseName("name")
@@ -199,12 +250,21 @@ int64_t SyslogInserter::InsertApplication(const std::string &app_name) {
 
   SqlFilter filter;
   filter.AddWhere(*column_name, SqlCondition::EqualIgnoreCase, app_name);
+  auto idx = database_->Exists(*table, filter);
+  if (idx != 0) {
+    app_cache_.emplace(app_name, idx);
+    return idx;
+  }
 
   IItem row(table->ApplicationId());
   row.AppendAttribute(*table, true, "name", app_name);
   row.AppendAttribute(*table, false, "DisplayName", app_name);
   database_->Insert(*table,row,filter);
-  return row.ItemId();
+  idx = row.ItemId();
+  if (idx != 0) {
+    app_cache_.emplace(app_name, idx);
+  }
+  return idx;
 }
 
 void SyslogInserter::InsertData(const StructuredData &data, int64_t msg_idx) {
@@ -243,11 +303,14 @@ void SyslogInserter::InsertData(const StructuredData &data, int64_t msg_idx) {
     filter.AddWhere(*key_name, SqlCondition::EqualIgnoreCase, key);
     filter.AddWhere(*key_parent, SqlCondition::EqualIgnoreCase, identity_idx);
 
-    IItem key_row(key_table->ApplicationId());
-    key_row.AppendAttribute(*key_table, true, "name", key);
-    key_row.AppendAttribute(*key_table, true, "parent", identity_idx);
-    database_->Insert(*key_table, key_row, filter);
-    const auto key_idx = key_row.ItemId();
+    auto key_idx = database_->Exists(*key_table, filter);
+    if (key_idx == 0) {
+      IItem key_row(key_table->ApplicationId());
+      key_row.AppendAttribute(*key_table, true, "name", key);
+      key_row.AppendAttribute(*key_table, true, "parent", identity_idx);
+      database_->Insert(*key_table, key_row, filter);
+      key_idx = key_row.ItemId();
+    }
     if (key_idx == 0) {
       continue;
     }
@@ -256,7 +319,7 @@ void SyslogInserter::InsertData(const StructuredData &data, int64_t msg_idx) {
     value_row.AppendAttribute(*value_table, true, "name",value);
     value_row.AppendAttribute(*value_table, true, "parent", msg_idx);
     value_row.AppendAttribute(*value_table, false, "SdName", key_idx);
-    database_->Insert(*key_table, key_row, SqlFilter());
+    database_->Insert(*key_table, value_row, SqlFilter());
   }
 }
 
@@ -266,10 +329,14 @@ int64_t SyslogInserter::InsertIdentity(const StructuredData &data){
     return 0;
   }
 
-  if (const auto itr = identity_cache_.find(identity);
-      itr != app_cache_.cend()) {
-    return itr->second;
+
+  // As we only insert and never delete identities on this table, we
+  // can first try the internal cache to see if it is
+  if (const auto find = identity_cache_.find(identity);
+      find != identity_cache_.cend()) {
+    return find->second;
   }
+
   auto* table = model_.GetTableByName("SdIdent");
   auto* column_name = table != nullptr ? table->GetColumnByBaseName("name")
                                        : nullptr;
@@ -277,15 +344,72 @@ int64_t SyslogInserter::InsertIdentity(const StructuredData &data){
     return 0;
   }
 
+
   SqlFilter filter;
   filter.AddWhere(*column_name, SqlCondition::EqualIgnoreCase, identity);
+  // Next is to check if the identity already exist in the table
+  auto idx = database_->Exists(*table, filter);
+  if (idx != 0) {
+    identity_cache_.emplace(identity, idx);
+    return idx;
+  }
 
+  // Not existing now insert a new item
   IItem row(table->ApplicationId());
   row.AppendAttribute(*table, true, "name", identity);
   row.AppendAttribute(*table, false, "Stem", data.IdentityStem());
   row.AppendAttribute(*table, false, "Enterprise", data.EnterpriseId());
   database_->Insert(*table,row,filter);
-  return row.ItemId();
+  idx = row.ItemId();
+  if (idx != 0) {
+    identity_cache_.emplace(identity, idx);
+  }
+  return idx;
+}
+
+util::syslog::SyslogMessage SyslogInserter::LastMessage() const {
+  std::lock_guard lock(last_message_locker_);
+  return last_message_;
+}
+
+bool SyslogInserter::AddOneMessage(SyslogMessage &msg) {
+  DatabaseGuard db_lock(*database_);
+  if (!db_lock.IsOk()) {
+    LOG_ERROR() << "Failed to open the database. Name: " << Name();
+    return false;
+  }
+
+  try {
+    InsertMessage(msg);
+  } catch( const std::exception& err) {
+    LOG_ERROR() << "Failed to insert syslog message. Name: " << Name()
+                << ", Error: "  << err.what();
+    db_lock.Rollback();
+    return false;
+  }
+  return true;
+}
+
+size_t SyslogInserter::GetNofMessages() {
+  size_t count = 0;
+  DatabaseGuard db_lock(*database_);
+  if (!db_lock.IsOk()) {
+    LOG_ERROR() << "Failed to open the database. Name: " << Name();
+    return 0;
+  }
+  try {
+    // select count(*) from syslog;
+    auto* table = model_.GetTableByName("Syslog");
+    if (table == nullptr) {
+      throw std::runtime_error("No syslog table");
+    }
+    count = database_->Count(*table, {});
+  } catch (const std::exception &err) {
+    LOG_ERROR() << "Failed to count syslog message. Name: " << Name()
+                << ", Error: "  << err.what();
+    db_lock.Rollback();
+  }
+  return count;
 }
 
 } // namespace ods

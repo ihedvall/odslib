@@ -42,7 +42,7 @@ void RedrawUnitBox(wxComboBox& box) {
   }
   int index = 1;
   for (const auto& text : unit_list) {
-    if (text == selected) {
+    if (text == selection) {
       selected = index;
     }
     box.Append(wxString::FromUTF8(text));

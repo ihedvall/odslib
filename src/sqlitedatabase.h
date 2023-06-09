@@ -5,6 +5,7 @@
 #pragma once
 
 #include <string>
+#include <functional>
 #include <sqlite3.h>
 #include <util/utilfactory.h>
 #include "ods/idatabase.h"
@@ -39,11 +40,14 @@ class SqliteDatabase : public IDatabase {
                     const SqlFilter& filter) override;
   void FetchItemList(const ITable& table, ItemList &dest_list,
                      const SqlFilter& filter) override;
-
+  size_t FetchItems(const ITable &table, const SqlFilter &filter,
+                  std::function<void(IItem &)> OnItem) override;
   void Vacuum() override;
 
   sqlite3* Sqlite3();
- protected:
+
+
+protected:
    [[nodiscard]] std::string DataTypeToDbString(DataType type) override;
    [[nodiscard]] bool IsDataTypeString(DataType type) override;
 

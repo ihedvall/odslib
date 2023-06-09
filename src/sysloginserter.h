@@ -7,6 +7,8 @@
 
 #include <workflow/irunner.h>
 #include <map>
+#include <mutex>
+#include "ods/imodel.h"
 #include "ods/idatabase.h"
 #include <util/syslogmessage.h>
 
@@ -21,6 +23,18 @@ public:
   void Tick() override;
   void Exit() override;
 
+  /** \brief Adds one syslog message to the database.
+   *
+   * Opens the database and adds one message to the database. This function
+   * is mainly used for unit test and manually adding small amount of messages.
+   * The InsertMessage() is much more effective if adding a lot of messages.
+   *
+   * @param msg Syslog message
+   * @return True if successful insert.
+   */
+  bool AddOneMessage( util::syslog::SyslogMessage& msg);
+  [[nodiscard]] size_t GetNofMessages();
+  [[nodiscard]] util::syslog::SyslogMessage LastMessage() const;
 private:
   using CacheList = std::map<std::string, int64_t, util::string::IgnoreCase>;
   size_t data_slot_ = 0;
@@ -31,8 +45,12 @@ private:
   CacheList host_cache_;
   CacheList app_cache_;
   CacheList identity_cache_;
+
+  mutable std::mutex last_message_locker_;
+  util::syslog::SyslogMessage last_message_;
+
   void ParseArguments();
-  void InsertMessage(const util::syslog::SyslogMessage& msg);
+  void InsertMessage( util::syslog::SyslogMessage& msg);
   int64_t InsertHost(const std::string& hostname);
   int64_t InsertApplication(const std::string& app_name);
   void InsertData(const util::syslog::StructuredData& data, int64_t msg_idx);

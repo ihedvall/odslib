@@ -459,6 +459,42 @@ void SqliteDatabase::FetchItemList(const ITable &table, ItemList& dest_list, con
   }
 }
 
+size_t SqliteDatabase::FetchItems(const ITable &table, const SqlFilter &filter,
+                                std::function<void(IItem&)> OnItem) {
+  if (!IsOpen()) {
+    throw std::runtime_error("The database is not open.");
+  }
+  size_t count = 0;
+  if (table.DatabaseName().empty()) {
+    return count;
+  }
+
+  std::ostringstream sql;
+  sql << "SELECT * FROM " << table.DatabaseName() ;
+  if (!filter.IsEmpty()) {
+    sql << " " << filter.GetWhereStatement();
+  }
+
+  SqliteStatement select(database_, sql.str());
+  for (bool more = select.Step(); more ; more = select.Step()) {
+    const auto& column_list = table.Columns();
+
+    IItem item;
+    item.ApplicationId(table.ApplicationId());
+    for (const auto& column : column_list) {
+      const auto index = select.GetColumnIndex(column.DatabaseName());
+      if (index < 0) {
+        continue;
+      }
+      item.AppendAttribute({column.ApplicationName(), column.BaseName(),
+                             select.Value<std::string>(index)});
+    }
+    OnItem(item);
+    ++count;
+  }
+  return count;
+}
+
 bool SqliteDatabase::FetchModelEnvironment(IModel &model) {
 
   try {
@@ -667,6 +703,7 @@ bool SqliteDatabase::IsDataTypeString(DataType type) {
 const std::string &SqliteDatabase::FileName() const {
   return IDatabase::ConnectionInfo();
 }
+
 
 } // end namespace ods
 

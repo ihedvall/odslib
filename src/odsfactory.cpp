@@ -7,6 +7,7 @@
 #include "sqlitedatabase.h"
 #include "postgresdb.h"
 #include "sysloginserter.h"
+#include "syslogrpcserver.h"
 #include <util/stringutil.h>
 #include <array>
 #include "template_names.icc"
@@ -59,13 +60,17 @@ OdsFactory::CreateTemplateTask(const workflow::IRunner &source) {
   if (IEquals(template_name, kSyslogInserter.data())) {
       auto temp = std::make_unique<SyslogInserter>(source);
       runner = std::move(temp);
+  } else if (IEquals(template_name, kSyslogRpcServer.data())) {
+      auto temp = std::make_unique<SyslogRpcServer>(source);
+      runner = std::move(temp);
   }
   return runner;
 }
 
 void OdsFactory::CreateDefaultTemplateTask(workflow::WorkflowServer &server) {
-  std::array<std::unique_ptr<IRunner>,1> temp_list = {
+  std::array<std::unique_ptr<IRunner>,2> temp_list = {
       std::make_unique<SyslogInserter>(),
+      std::make_unique<SyslogRpcServer>(),
   };
 
   for (auto& temp : temp_list) {

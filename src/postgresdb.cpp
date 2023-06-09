@@ -271,6 +271,38 @@ void PostgresDb::FetchItemList(const ITable &table, ItemList& dest_list,
       dest_list.push_back(std::move(item));
   }
 }
+size_t PostgresDb::FetchItems(const ITable &table, const SqlFilter &filter,
+                              std::function<void(IItem &)> OnItem) {
+  if (!IsOpen()) {
+      throw std::runtime_error("The database is not open.");
+  }
+  if (table.DatabaseName().empty()) {
+      return 0;
+  }
+
+  std::ostringstream sql;
+  sql << "SELECT * FROM " << table.DatabaseName() ;
+  if (!filter.IsEmpty()) {
+      sql << " " << filter.GetWhereStatement();
+  }
+  size_t count = 0;
+  PostgresStatement select(connection_, sql.str());
+  for (bool more = select.Step(); more ; more = select.Step()) {
+      const auto& column_list = table.Columns();
+      IItem item;
+      item.ApplicationId(table.ApplicationId());
+
+      for (const auto& column : column_list) {
+        const auto index = select.GetColumnIndex(column.DatabaseName());
+        if (index < 0) {
+          continue;
+        }
+        item.AppendAttribute({column.ApplicationName(), column.BaseName(), select.Value<std::string>(index)});
+      }
+      OnItem(item);
+  }
+  return count;
+}
 
 bool PostgresDb::ReadSvcEnumTable(IModel &model) {
   try {
@@ -469,5 +501,7 @@ bool PostgresDb::FetchModelEnvironment(IModel &model) {
   }
   return true;
 }
+
+
 
 } // namespace ods::detail
