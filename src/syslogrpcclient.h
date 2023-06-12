@@ -14,6 +14,8 @@
 
 namespace ods {
 
+using SyslogList = std::vector<util::syslog::SyslogMessage>;
+
 class SyslogRpcClient {
 public:
   SyslogRpcClient() = default;
@@ -26,11 +28,15 @@ public:
 
   [[nodiscard]] util::syslog::SyslogMessage GetLastEvent();
   [[nodiscard]] size_t GetCount();
+  void GetEventList(SyslogList& event_list);
+  void GetSyslogList(SyslogList& syslog_list);
 
   void Clear();
   void Level(util::syslog::SyslogSeverity severity);
   void Facility(uint8_t facility);
   void TextFilter(const std::string& wildcard);
+  void TimeFrom(uint64_t ns1970);
+  void TimeTo(uint64_t ns1970);
 
 private:
   std::string host_ = "localhost";
@@ -38,8 +44,7 @@ private:
   std::unique_ptr<syslog::SyslogService::Stub> stub_;
   bool operable_ = false;
   ::syslog::SyslogFilter filter_; ///< Common filter object for the client
-  void MakeSyslogFilter(const util::syslog::SyslogMessage& filter,
-                        ::syslog::SyslogFilter& dest);
+
 };
 
 } // namespace ods

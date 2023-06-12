@@ -129,6 +129,10 @@ if (wxWidgets_FOUND AND ODS_TOOLS)
     add_subdirectory(reportexplorer)
 endif()
 
+if (ODS_TOOLS)
+    add_subdirectory(eventlogrpcserverd)
+endif()
+
 if (GTEST_FOUND AND ODS_TEST)
     enable_testing()
     add_subdirectory(test)

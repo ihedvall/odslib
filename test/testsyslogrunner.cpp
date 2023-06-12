@@ -183,6 +183,25 @@ TEST_F(TestSyslogRunner, TestRpcServer) {
   EXPECT_GT(nof_msg, 0);
   EXPECT_EQ(nof_msg, db_count);
   std::cout << "Nof Msg: " << nof_msg << std::endl;
+
+  SyslogList event_list;
+  client.GetEventList(event_list);
+  EXPECT_EQ(nof_msg, event_list.size());
+
+  for (const auto& event : event_list) {
+    std::cout << "ID: " << event.Index() << ", TEXT: "
+              << event.Message() << std::endl;
+  }
+
+  SyslogList syslog_list;
+  client.GetSyslogList(syslog_list);
+  EXPECT_EQ(nof_msg, syslog_list.size());
+
+  for (const auto& syslog : syslog_list) {
+    std::cout << "ID: " << syslog.Index() << ", TEXT: "
+              << syslog.Message() << std::endl;
+  }
+
   client.Stop();
   server.Exit();
   inserter.Exit();

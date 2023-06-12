@@ -13,27 +13,28 @@
 
 namespace ods {
 
+/** \brief Type of where condition.
+ *
+ */
 enum class SqlCondition {
-  Equal,
-  EqualIgnoreCase,
-  Greater,
-  Less,
-  GreaterEQ,
-  LessEQ,
-  NotEqual,
-  NotEqualIgnoreCase,
-  Like,
-  NotLike,
-  StartsWith,
-  EndsWith,
-  In,
-  InIgnoreCase,
-  NotIn,
-  OrderByNone,
-  OrderByAsc,
-  OrderByDesc,
-  LimitNofRows,
-  LimitOffset,
+  Equal,        ///< WHERE column = value ('value' for strings)
+  EqualIgnoreCase, ///< WHERE LOWER(column) = LOWER('value')
+  Greater,      ///< WHERE column \> value
+  Less,         ///< WHERE column \< value
+  GreaterEQ,    ///< WHERE column \>= value
+  LessEQ,       ///< WHERE column \<= value
+  NotEqual,     ///< WHERE column \<\> value
+  NotEqualIgnoreCase,///< WHERE LOWER(column \<\> LOWER('value')
+  Like,         ///< WHERE column LIKE value
+  NotLike,      ///< WHERE column NOT LIKE value
+  In,           ///< WHERE column IN (val1, val2...)
+  InIgnoreCase, ///< WHERE LOWER(column) IN (LOWER('val1'), LOWER('val2')...)
+  NotIn,        ///< WHERE column NOT IN (val1, val2...)
+  OrderByNone,  ///< ORDER BY column
+  OrderByAsc,   ///< ORDER BY column ASC
+  OrderByDesc,  ///< ORDER BY column DESC
+  LimitNofRows, ///< LIMIT value
+  LimitOffset,  ///< OFFSET value
 };
 
 struct SqlFilterItem {
@@ -47,9 +48,24 @@ struct SqlFilterItem {
 class SqlFilter {
  public:
 
+   /** \brief Simple function that handle compare conditions.
+    *
+    * Simple function that adds a where statement that compares
+    * value. You can use this method for IdNameMap, ItemList. The later
+    * type assume some sort of IN statement.
+    * @tparam T Type of value
+    * @param column Reference to the column.
+    * @param condition Type of compare.
+    * @param value The value.
+    */
   template <typename T>
   void AddWhere(const IColumn& column, SqlCondition condition, const T &value);
-  void AddOrder(const IColumn& column, SqlCondition condition = SqlCondition::OrderByNone, const std::string&expression = {});
+  void AddWhereSelect(const IColumn& column, SqlCondition condition,
+                    const ITable& parent, const SqlFilter& parent_filter);
+  void AddOrder(const IColumn& column,
+                SqlCondition condition = SqlCondition::OrderByNone,
+                const std::string&expression = {});
+
   void AddLimit(SqlCondition condition , uint64_t value);
 
   [[nodiscard]] std::string GetWhereStatement() const;
@@ -95,21 +111,27 @@ void SqlFilter::AddWhere(const IColumn &column, SqlCondition condition, const T&
 }
 
 template<>
-void SqlFilter::AddWhere<bool>(const IColumn &column, SqlCondition condition, const bool &value);
+void SqlFilter::AddWhere<bool>(const IColumn &column, SqlCondition condition,
+                               const bool &value);
 
 template<>
-void SqlFilter::AddWhere<const char*>(const IColumn &column, SqlCondition condition, const char* const &value);
+void SqlFilter::AddWhere<const char*>(const IColumn &column,
+                                       SqlCondition condition,
+                                       const char* const &value);
 
 template<>
-void SqlFilter::AddWhere<std::vector<int64_t>>(const IColumn &column, SqlCondition condition,
+void SqlFilter::AddWhere<std::vector<int64_t>>(const IColumn &column,
+                                               SqlCondition condition,
     const std::vector<int64_t>& value);
 
 template<>
-void SqlFilter::AddWhere<IdNameMap>(const IColumn &column, SqlCondition condition,
-                                                       const IdNameMap& value);
+void SqlFilter::AddWhere<IdNameMap>(const IColumn &column,
+                                    SqlCondition condition,
+                                    const IdNameMap& value);
 
 template<>
-void SqlFilter::AddWhere<ItemList>(const IColumn &column, SqlCondition condition,
+void SqlFilter::AddWhere<ItemList>(const IColumn &column,
+                                   SqlCondition condition,
                                     const ItemList& value);
 static SqlFilter kSqlEmptyFilter = SqlFilter();
 

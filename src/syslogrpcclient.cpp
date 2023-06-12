@@ -92,9 +92,122 @@ size_t SyslogRpcClient::GetCount() {
   return count;
 }
 
+void SyslogRpcClient::GetEventList(
+    std::vector<util::syslog::SyslogMessage>& event_list) {
+
+  try {
+    ClientContext context;
+    auto reader(stub_->GetEvent(&context, filter_));
+    for (EventMessage event; reader->Read(&event); event.Clear()) {
+      util::syslog::SyslogMessage syslog;
+      syslog.Index(event.identity());
+      syslog.Severity(static_cast<util::syslog::SyslogSeverity>(
+          event.severity()));
+      if (const auto* time = event.mutable_timestamp(); time != nullptr) {
+        auto ns1970 = static_cast<uint64_t>(time->seconds());
+        ns1970 *= 1'000'000'000;
+        ns1970 += time->nanos();
+        syslog.Timestamp(ns1970);
+      }
+      syslog.Message(event.text());
+      event_list.emplace_back(syslog);
+    }
+
+    const auto status = reader->Finish();
+    if (!status.ok()) {
+      throw std::runtime_error(status.error_message());
+    }
+
+    operable_ = true;
+  } catch (const std::exception& err) {
+    if (operable_) {
+      LOG_ERROR() << "Get event request failed. Error: " << err.what();
+    }
+    operable_ = false;
+  }
+}
+
+void SyslogRpcClient::GetSyslogList(
+    std::vector<util::syslog::SyslogMessage>& syslog_list) {
+
+    try {
+      ClientContext context;
+      auto reader(stub_->GetSyslog(&context, filter_));
+      for (SyslogMessage event; reader->Read(&event); event.Clear()) {
+        util::syslog::SyslogMessage syslog;
+        syslog.Index(event.identity());
+        syslog.Severity(static_cast<util::syslog::SyslogSeverity>(
+            event.severity()));
+        syslog.Facility(static_cast<util::syslog::SyslogFacility>(
+            event.facility()));
+        if (const auto* time = event.mutable_timestamp(); time != nullptr) {
+          auto ns1970 = static_cast<uint64_t>(time->seconds());
+          ns1970 *= 1'000'000'000;
+          ns1970 += time->nanos();
+          syslog.Timestamp(ns1970);
+        }
+        syslog.Message(event.text());
+        syslog.Hostname(event.hostname());
+        syslog.ApplicationName(event.application_name());
+        syslog.ProcessId(event.process_id());
+        syslog.MessageId(event.message_id());
+        auto data_list = event.data_values();
+        for (const auto& data_value : data_list) {
+          const auto sd_name_idx = data_value.identity();
+          const auto sd_name = data_value.name();
+          const auto sd_value = data_value.value();
+          syslog.AddStructuredData(std::to_string(sd_name_idx));
+          syslog.AppendParameter(sd_name,sd_value);
+        }
+        syslog_list.emplace_back(syslog);
+      }
+
+      const auto status = reader->Finish();
+      if (!status.ok()) {
+        throw std::runtime_error(status.error_message());
+      }
+
+      operable_ = true;
+    } catch (const std::exception& err) {
+      if (operable_) {
+        LOG_ERROR() << "Get event request failed. Error: " << err.what();
+      }
+      operable_ = false;
+    }
+
+}
+
 void SyslogRpcClient::Clear() {filter_.Clear();}
 void SyslogRpcClient::Level(util::syslog::SyslogSeverity severity) {
   filter_.set_level(static_cast<Severity>(severity));
 }
+void SyslogRpcClient::Facility(uint8_t facility) {
+  filter_.set_facility(facility);
+}
+
+void SyslogRpcClient::TextFilter(const string &wildcard) {
+  filter_.set_text_filter(wildcard);
+}
+
+void SyslogRpcClient::TimeFrom(uint64_t ns1970) {
+  if (auto* time = filter_.mutable_from_time();
+      time != nullptr) {
+    time->set_seconds(static_cast<int64_t>(ns1970 / 1'000'000'000));
+    time->set_nanos(static_cast<int32_t>(ns1970 % 1'000'000'000));
+  } else {
+    filter_.clear_from_time();
+  }
+}
+
+void SyslogRpcClient::TimeTo(uint64_t ns1970) {
+  if (auto *time = filter_.mutable_to_time(); time != nullptr) {
+    time->set_seconds(static_cast<int64_t>(ns1970 / 1'000'000'000));
+    time->set_nanos(static_cast<int32_t>(ns1970 % 1'000'000'000));
+  } else {
+    filter_.clear_to_time();
+  }
+}
+
+
 
 } // namespace ods
