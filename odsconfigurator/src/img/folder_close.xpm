@@ -1,0 +1,41 @@
+/* XPM */
+static const char *freeimage[] = {
+/* width height num_colors chars_per_pixel */
+"16 16 18 1",
+/* colors */
+"  c #ffffff",
+". c #ccb2d9",
+"X c #a678bd",
+"o c #8d52ab",
+"O c #b38bc7",
+"+ c #d2cfcb",
+"@ c #787878",
+"# c #f4f3f2",
+"$ c #7a7a7a",
+"% c #f8f8f8",
+"& c #c3a3d3",
+"* c #797979",
+"= c #eab766",
+"- c #faf0e0",
+"; c #eec585",
+": c #fefefd",
+"> c #f5dfbb",
+", c #f4dcb7",
+/* pixels */
+"         .XoX.  ",
+"        OoooooO ",
+"+@@@@@#.o    oo.",
+"$@@@@@%Xo  &oooX",
+"*@@@@@ oo & &ooo",
+"       Xo o& &oX",
+"======-.oooo& o.",
+"======;:OoooooO ",
+"=======>:.XoX.: ",
+"=============== ",
+"=============== ",
+"=============== ",
+"=============== ",
+"=============== ",
+"=============== ",
+",=============, "
+};

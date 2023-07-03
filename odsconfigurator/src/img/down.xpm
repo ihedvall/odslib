@@ -1,0 +1,28 @@
+/* XPM */
+static const char *freeimage[] = {
+/* width height num_colors chars_per_pixel */
+"16 16 5 1",
+/* colors */
+"  c #ffffff",
+". c #3f79b3",
+"X c #3e78b3",
+"o c #3e77b1",
+"O c #fcfdfe",
+/* pixels */
+"      .X.       ",
+"      XXX       ",
+"      XXX       ",
+"      XXX       ",
+"      XXX       ",
+"      XXX       ",
+" X    XXX    X  ",
+" XX   XXX   XX  ",
+" XXX  XXX  XXX  ",
+" oXXX XXX XXXo  ",
+"  oXXXXXXXXXo   ",
+"  OoXXXXXXXoO   ",
+"   OoXXXXXoO    ",
+"    OoXXXoO     ",
+"     OoXoO      ",
+"      OoO       "
+};
