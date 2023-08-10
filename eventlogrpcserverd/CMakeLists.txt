@@ -34,13 +34,14 @@ target_link_libraries(event_log_rpc PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpq.lib
 target_link_libraries(event_log_rpc PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgtypes.lib)
 target_link_libraries(event_log_rpc PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgport.lib)
 target_link_libraries(event_log_rpc PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgcommon.lib)
-target_link_libraries(event_log_rpc PRIVATE ${OPENSSL_LIBRARIES})
+
 target_link_libraries(event_log_rpc PRIVATE absl::log)
 target_link_libraries(event_log_rpc PRIVATE absl::log_internal_check_op)
 target_link_libraries(event_log_rpc PRIVATE utf8_range::utf8_range)
 target_link_libraries(event_log_rpc PRIVATE utf8_range::utf8_validity)
 target_link_libraries(event_log_rpc PRIVATE gRPC::grpc++)
-
+target_link_libraries(event_log_rpc PRIVATE OpenSSL::Crypto)
+target_link_libraries(event_log_rpc PRIVATE OpenSSL::SSL)
 if (WIN32)
     target_link_libraries(event_log_rpc PRIVATE ws2_32)
     target_link_libraries(event_log_rpc PRIVATE mswsock)

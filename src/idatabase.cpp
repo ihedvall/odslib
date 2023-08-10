@@ -887,6 +887,44 @@ void IDatabase::Update(const ITable &table, IItem &row, const SqlFilter& filter)
   ExecuteSql(update.str());
 }
 
+std::string IDatabase::DatabaseTypeAsString() const {
+  switch (type_of_database_) {
+  case DbType::TypeGeneric:
+    return "Generic";
+
+  case DbType::TypeSqlite:
+    return "SQLite";
+
+  case DbType::TypePostgres:
+    return "Postgres";
+
+  case DbType::TypeOracle:
+    return "Oracle";
+
+  case DbType::TypeSqlServer:
+    return "SQLServer";
+
+  default:
+    break;
+  }
+  return "Unknown";
+}
+
+DbType IDatabase::StringAsDatabaseType(const std::string &type) {
+  if (IEquals(type, "SQLite")) {
+    return DbType::TypeSqlite;
+  }
+  if (IEquals(type, "Postgres")) {
+    return DbType::TypePostgres;
+  }
+  if (IEquals(type, "Oracle")) {
+    return DbType::TypeOracle;
+  }
+  if (IEquals(type, "SQLServer")) {
+    return DbType::TypeSqlServer;
+  }
+  return DbType::TypeGeneric;
+}
 
 } // end namespace ods
 

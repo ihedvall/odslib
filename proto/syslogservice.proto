@@ -22,7 +22,6 @@ message SyslogDataDefinition {
   string display_name = 3; ///< Friendly name of the value.
   string description = 4; ///< Descriptive text
   string unit = 5; ///< Unit of measure
-  string company = 6; ///< Company name or enterprise ID, if available.
 }
 
 message SyslogDataValue {
@@ -74,4 +73,6 @@ service SyslogService {
   rpc GetEvent(SyslogFilter) returns (stream EventMessage) {}
   rpc GetSyslog(SyslogFilter) returns (stream SyslogMessage) {}
   rpc GetDataDefinitions(google.protobuf.Empty) returns (stream SyslogDataDefinition) {}
+  rpc AddNewMessage(SyslogMessage) returns (google.protobuf.Empty) {}
+
 }

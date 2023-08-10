@@ -18,7 +18,7 @@ namespace ods::detail {
 
 class SqliteDatabase : public IDatabase {
  public:
-  SqliteDatabase() = default;
+  SqliteDatabase();
   explicit SqliteDatabase(const std::string& filename);
   ~SqliteDatabase() override;
 

@@ -28,6 +28,10 @@ class IDatabase {
   virtual ~IDatabase() = default;
 
   [[nodiscard]] DbType DatabaseType() const { return type_of_database_;}
+  /** \brief Returns the database type as a string. */
+  [[nodiscard]] std::string DatabaseTypeAsString() const;
+  /** \brief Function that convert a string to a database type. */
+  [[nodiscard]] static DbType StringAsDatabaseType(const std::string& type);
 
   void Name(const std::string& name) {name_ = name;}
   [[nodiscard]] const std::string& Name() const {return name_;}

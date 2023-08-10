@@ -12,6 +12,59 @@
 using namespace ::syslog;
 using namespace ::grpc;
 using namespace util::log;
+
+namespace {
+uint64_t TimestampToNs(const ::google::protobuf::Timestamp& timestamp) {
+  uint64_t ns1970 = timestamp.seconds();
+  ns1970 *= 1'000'000'000;
+  ns1970 += timestamp.nanos();
+  return ns1970;
+}
+
+void NsToTimestamp(uint64_t ns1970, ::google::protobuf::Timestamp& timestamp) {
+  timestamp.set_seconds(static_cast<int64_t>(ns1970 / 1'000'000'000));
+  timestamp.set_nanos(static_cast<int32_t>(ns1970 % 1'000'000'000));
+}
+
+void EventToSyslog(const syslog::SyslogMessage& event,
+              util::syslog::SyslogMessage& syslog) {
+  syslog.Index(event.identity());
+  syslog.Severity(static_cast<util::syslog::SyslogSeverity>(event.severity()));
+  syslog.Facility(static_cast<util::syslog::SyslogFacility>(event.facility()));
+  syslog.Timestamp(TimestampToNs(event.timestamp()));
+  syslog.Message(event.text());
+  syslog.Hostname(event.hostname());
+  syslog.ApplicationName(event.application_name());
+  syslog.ProcessId(event.process_id());
+  syslog.MessageId(event.message_id());
+  auto data_list = event.data_values();
+  for (const auto &data_value : data_list) {
+    const auto sd_name_idx = data_value.identity();
+    const auto sd_name = data_value.name();
+    const auto sd_value = data_value.value();
+    syslog.AddStructuredData(std::to_string(sd_name_idx));
+    syslog.AppendParameter(sd_name, sd_value);
+  }
+}
+
+void SyslogToEvent(const util::syslog::SyslogMessage& syslog,
+                   syslog::SyslogMessage& event) {
+  event.set_identity(syslog.Index());
+
+  event.set_severity(static_cast<syslog::Severity>(syslog.Severity()));
+  event.set_facility(static_cast<uint32_t>(syslog.Facility()));
+  if (auto* time = event.mutable_timestamp(); time != nullptr ) {
+    NsToTimestamp(syslog.Timestamp(), *time);
+  }
+  event.set_text(syslog.Message());
+  event.set_hostname(syslog.Hostname());
+  event.set_application_name(syslog.ApplicationName());
+  event.set_process_id(syslog.ProcessId());
+  event.set_message_id(syslog.MessageId());
+}
+
+} // end namespace
+
 namespace ods {
 
 SyslogRpcClient::SyslogRpcClient(std::string host, uint16_t port)
@@ -55,12 +108,7 @@ util::syslog::SyslogMessage SyslogRpcClient::GetLastEvent() {
     }
     msg.Index(event.identity());
     msg.Severity(static_cast<util::syslog::SyslogSeverity>(event.identity()));
-
-    auto ns1970 = static_cast<uint64_t>(event.timestamp().seconds());
-    ns1970 *= 1'000'000'000;
-    ns1970 += event.timestamp().nanos();
-    msg.Timestamp(ns1970);
-
+    msg.Timestamp(TimestampToNs(event.timestamp()));
     msg.Message(event.text());
     operable_ = true;
   } catch (const std::exception& err) {
@@ -103,12 +151,7 @@ void SyslogRpcClient::GetEventList(
       syslog.Index(event.identity());
       syslog.Severity(static_cast<util::syslog::SyslogSeverity>(
           event.severity()));
-      if (const auto* time = event.mutable_timestamp(); time != nullptr) {
-        auto ns1970 = static_cast<uint64_t>(time->seconds());
-        ns1970 *= 1'000'000'000;
-        ns1970 += time->nanos();
-        syslog.Timestamp(ns1970);
-      }
+      syslog.Timestamp(TimestampToNs(event.timestamp()));
       syslog.Message(event.text());
       event_list.emplace_back(syslog);
     }
@@ -140,12 +183,7 @@ void SyslogRpcClient::GetSyslogList(
             event.severity()));
         syslog.Facility(static_cast<util::syslog::SyslogFacility>(
             event.facility()));
-        if (const auto* time = event.mutable_timestamp(); time != nullptr) {
-          auto ns1970 = static_cast<uint64_t>(time->seconds());
-          ns1970 *= 1'000'000'000;
-          ns1970 += time->nanos();
-          syslog.Timestamp(ns1970);
-        }
+        syslog.Timestamp(TimestampToNs(event.timestamp()));
         syslog.Message(event.text());
         syslog.Hostname(event.hostname());
         syslog.ApplicationName(event.application_name());
@@ -175,6 +213,26 @@ void SyslogRpcClient::GetSyslogList(
       operable_ = false;
     }
 
+}
+
+void SyslogRpcClient::AddEvent(const util::syslog::SyslogMessage &event) {
+
+    try {
+      ClientContext context;
+      SyslogMessage request;
+     SyslogToEvent(event, request);
+      google::protobuf::Empty reply;
+      const auto status = stub_->AddNewMessage(&context, request, &reply);
+      if (!status.ok()) {
+        throw std::runtime_error(status.error_message());
+      }
+      operable_ = true;
+    } catch (const std::exception& err) {
+      if (operable_) {
+        LOG_ERROR() << "Add event request failed. Error: " << err.what();
+      }
+      operable_ = false;
+    }
 }
 
 void SyslogRpcClient::Clear() {filter_.Clear();}
@@ -207,7 +265,6 @@ void SyslogRpcClient::TimeTo(uint64_t ns1970) {
     filter_.clear_to_time();
   }
 }
-
 
 
 } // namespace ods

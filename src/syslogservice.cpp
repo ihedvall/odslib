@@ -13,8 +13,45 @@
 #include "ods/databaseguard.h"
 
 using namespace ::syslog;
-using namespace ::util::log;
 using namespace ::grpc;
+using namespace ::util::log;
+
+namespace {
+
+void NsToProtoTimestamp(uint64_t ns1970,
+                        google::protobuf::Timestamp* timestamp) {
+  if (timestamp != nullptr) {
+    timestamp->set_seconds(static_cast<int64_t>(ns1970 / 1'000'000'000));
+    timestamp->set_nanos(static_cast<int32_t>(ns1970 % 1'000'000'000));
+  }
+}
+
+uint64_t ProtoTimestampToNs(const google::protobuf::Timestamp& timestamp) {
+  uint64_t ns1970 = 0;
+  ns1970 = timestamp.seconds();
+  ns1970 *= 1'000'000'000;
+  ns1970 += timestamp.nanos();
+  return ns1970;
+}
+
+util::syslog::SyslogMessage ProtobufMessageToSyslogMessage(
+    const SyslogMessage& msg_pb) {
+  util::syslog::SyslogMessage msg;
+  msg.Index(msg_pb.identity());
+  msg.Severity(static_cast<util::syslog::SyslogSeverity>(msg_pb.severity()));
+  msg.Facility(static_cast<util::syslog::SyslogFacility>(msg_pb.facility()));
+  msg.Timestamp(ProtoTimestampToNs(msg_pb.timestamp()));
+  msg.Hostname(msg_pb.hostname());
+  msg.ApplicationName(msg_pb.application_name());
+  msg.ProcessId(msg_pb.process_id());
+  msg.MessageId(msg_pb.message_id());
+  msg.Message(msg_pb.text());
+  // This function cannot handle data values as the protobuf
+  // data value reference a database index
+  return msg;
+}
+
+} // end namespace
 
 namespace ods {
 SyslogService::SyslogService(SyslogRpcServer &server)
@@ -22,9 +59,7 @@ SyslogService::SyslogService(SyslogRpcServer &server)
 {
 }
 
-SyslogService::~SyslogService() {}
-
-Status SyslogService::GetLastEvent(grpc::ServerContext *context,
+Status SyslogService::GetLastEvent(ServerContext *context,
                             const google::protobuf::Empty *request,
                             EventMessage *response) {
   if (response == nullptr) {
@@ -39,12 +74,7 @@ Status SyslogService::GetLastEvent(grpc::ServerContext *context,
   // Fill in the response properties.
   response->set_identity(message.Index());
   response->set_severity(static_cast<Severity>(message.Severity()));
-  auto* time = response->mutable_timestamp();
-  if (time != nullptr) {
-    time->set_seconds(
-        static_cast<int64_t>(message.Timestamp() / 1'000'000'000));
-    time->set_nanos(static_cast<int32_t>(message.Timestamp() % 1'000'000'000));
-  }
+  NsToProtoTimestamp(message.Timestamp(), response->mutable_timestamp());
   response->set_text(message.Message());
 
   return Status::OK;
@@ -52,16 +82,15 @@ Status SyslogService::GetLastEvent(grpc::ServerContext *context,
 
 Status SyslogService::GetCount(ServerContext *context,
                                const SyslogFilter *request,
-                                     SyslogCount *response) {
+                               SyslogCount *response) {
   if (request == nullptr | response == nullptr) {
     Status invalid_argument(StatusCode::INVALID_ARGUMENT,
                             "Response or request argument is null");
     return invalid_argument;
   }
-  auto filter = MakeFilter(*request);
+  auto sql_filter = MakeFilter(*request);
   const auto& model = server_.GetModel();
   auto* table = model.GetTableByName("Syslog");
-
   auto* database = server_.GetDatabase();
   if (database == nullptr || table == nullptr) {
     Status internal_error(StatusCode::INTERNAL,
@@ -75,7 +104,7 @@ Status SyslogService::GetCount(ServerContext *context,
     if (!db_lock.IsOk()) {
       throw std::runtime_error("Failed to connect to the database.");
     }
-    const auto count = database->Count(*table, filter);
+    const auto count = database->Count(*table, sql_filter);
     response->set_count(count);
   } catch (const std::exception& err) {
     db_lock.Rollback();
@@ -102,7 +131,6 @@ Status SyslogService::GetEvent(ServerContext *context,
   // Connect to database and fetch the events
   const auto& model = server_.GetModel();
   auto* table = model.GetTableByName("Syslog");
-
   auto* database = server_.GetDatabase();
   if (database == nullptr || table == nullptr) {
     Status internal_error(StatusCode::INTERNAL,
@@ -124,12 +152,7 @@ Status SyslogService::GetEvent(ServerContext *context,
       msg.set_severity(static_cast<Severity>(item.Value<uint16_t>("Severity")));
       msg.timestamp();
       const auto ns1970 = item.Value<uint64_t>("LogTime");
-      auto* time = msg.mutable_timestamp();
-      if (time != nullptr) {
-        time->set_seconds(
-            static_cast<int64_t>(ns1970 / 1'000'000'000));
-        time->set_nanos(static_cast<int32_t>(ns1970 % 1'000'000'000));
-      }
+      NsToProtoTimestamp(ns1970, msg.mutable_timestamp());
       msg.set_text(item.Value<std::string>("Message"));
       writer->Write(msg);
     });
@@ -231,12 +254,7 @@ Status SyslogService::GetSyslog(
       msg.set_facility(item.Value<uint32_t>("Facility"));
       msg.timestamp();
       const auto ns1970 = item.Value<uint64_t>("LogTime");
-      auto* time = msg.mutable_timestamp();
-      if (time != nullptr) {
-        time->set_seconds(
-            static_cast<int64_t>(ns1970 / 1'000'000'000));
-        time->set_nanos(static_cast<int32_t>(ns1970 % 1'000'000'000));
-      }
+      NsToProtoTimestamp(ns1970, msg.mutable_timestamp());
       msg.set_text(item.Value<std::string>("Message"));
       if (const auto find_host =
               host_list.find( item.Value<int64_t>("Hostname"));
@@ -294,7 +312,62 @@ Status SyslogService::GetSyslog(
 Status SyslogService::GetDataDefinitions(
     ServerContext *context, const google::protobuf::Empty *request,
     ServerWriter<SyslogDataDefinition> *writer) {
-  return Service::GetDataDefinitions(context, request, writer);
+  if (writer == nullptr) {
+    Status invalid_argument(StatusCode::INVALID_ARGUMENT,
+                            "Writer argument is null");
+    return invalid_argument;
+  }
+  // Connect to database and fetch the events
+  const auto& model = server_.GetModel();
+  auto* table = model.GetTableByName("SdName");
+  auto* database = server_.GetDatabase();
+  if (database == nullptr || table == nullptr) {
+    Status internal_error(StatusCode::INTERNAL,
+                          "Missing database or missing SdName table");
+    return internal_error;
+  }
+
+  // Connect to the database and fetch items.
+  // With syslog messages, we need names from other table, so fetch them first
+  // to speed up the responses.
+  DatabaseGuard db_lock(*database);
+
+  try {
+    if (!db_lock.IsOk()) {
+      throw std::runtime_error("Failed to connect to the database.");
+    }
+    IdNameMap unit_list;
+    if ( auto* unit_table = model.GetTableByName("Unit");
+        unit_table != nullptr) {
+      database->FetchNameMap(*unit_table, unit_list, {});
+    }
+
+    SqlFilter empty_filter {};
+    database->FetchItems(*table, empty_filter, [&] (IItem& item) {
+      SyslogDataDefinition msg;
+      msg.set_identity(item.ItemId());
+      msg.set_name(item.BaseValue<std::string>("name"));
+      msg.set_display_name(item.Value<std::string>("DisplayName"));
+      msg.set_description(item.BaseValue<std::string>("description"));
+
+      std::string unit;
+      const auto idx = item.Value<int64_t>("Unit");
+      if (idx != 0) {
+        const auto itr = unit_list.find(idx);
+        if (itr != unit_list.cend()) {
+          unit = itr->second;
+        }
+      }
+      msg.set_unit(unit);
+      writer->Write(msg);
+    });
+
+  } catch (const std::exception& err) {
+    db_lock.Rollback();
+    Status internal_error(StatusCode::INTERNAL, err.what());
+    return internal_error;
+  }
+  return Status::OK;
 }
 
 SqlFilter SyslogService::MakeFilter(const SyslogFilter &syslog_filter) const {
@@ -303,7 +376,7 @@ SqlFilter SyslogService::MakeFilter(const SyslogFilter &syslog_filter) const {
   SqlFilter filter;
   const auto* table = model.GetTableByName("Syslog");
   if (table == nullptr) {
-    LOG_ERROR() << "Syslog table not found";
+    ::LOG_ERROR() << "Syslog table not found";
     return filter;
   }
 
@@ -335,5 +408,33 @@ SqlFilter SyslogService::MakeFilter(const SyslogFilter &syslog_filter) const {
   return filter;
 }
 
+grpc::Status SyslogService::AddNewMessage(grpc::ServerContext *context,
+                                          const syslog::SyslogMessage *request,
+                                          google::protobuf::Empty *response) {
+  if (request == nullptr) {
+    Status invalid_argument(StatusCode::INVALID_ARGUMENT,
+                            "Request argument is null");
+    return invalid_argument;
+  }
+  auto* database = server_.GetDatabase();
+  if (database == nullptr) {
+    Status internal_error(StatusCode::INTERNAL,
+                          "Missing database");
+    return internal_error;
+  }
+
+  // Convert to a C++ syslog object, so it works with the inserter task
+  auto msg = ProtobufMessageToSyslogMessage(*request);
+
+  // Create a syslog inserter task and add a syslog message
+  {
+    SyslogInserter inserter(*database);
+    inserter.Init();
+    inserter.AddOneMessage(msg);
+    inserter.Exit();
+  }
+  return Status::OK;
+
+}
 
 } // namespace ods

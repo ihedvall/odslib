@@ -8,7 +8,7 @@ if (NOT Protobuf_FOUND)
     message(STATUS "Protobuf Found (Try 1): " ${Protobuf_FOUND})
 
     if (NOT Protobuf_FOUND)
-        set(Protobuf_ROOT "K:/grpc/master")
+        set(Protobuf_ROOT "K:/grpc")
         find_package(Protobuf REQUIRED)
         message(STATUS "Protobuf Found (Try 2): " ${Protobuf_FOUND})
     endif()

@@ -43,6 +43,20 @@ SyslogInserter::SyslogInserter(const IRunner& source)
   ParseArguments();
 }
 
+SyslogInserter::SyslogInserter(const IDatabase &database)
+    : db_type_(database.DatabaseTypeAsString()),
+      connection_string_(database.ConnectionInfo())
+{
+  Name(kSyslogInserter.data());
+  Template(kSyslogInserter.data());
+  Description("Insert syslog messages into a database");
+  std::ostringstream temp;
+  temp << "--slot=" << data_slot_ << " ";
+  temp << "--dbtype=" << db_type_ << " ";
+  temp << "--connection=\"" << connection_string_ << "\"";
+  Arguments(temp.str());
+}
+
 void SyslogInserter::ParseArguments() {
   std::string arguments = Arguments();
   // If nor arguments are given, the copy the insert syslog task arguments.
@@ -81,11 +95,9 @@ void SyslogInserter::ParseArguments() {
 void SyslogInserter::Init() {
   IRunner::Init();
   ParseArguments();
-  if (IEquals(db_type_, "Postgres")) {
-    database_ = OdsFactory::CreateDatabase(DbType::TypePostgres);
-  } else if (IEquals(db_type_, "SQLite")) {
-    database_ = OdsFactory::CreateDatabase(DbType::TypeSqlite);
-  }
+  database_ = OdsFactory::CreateDatabase(
+      IDatabase::StringAsDatabaseType(db_type_));
+
   try {
     if (database_) {
       database_->ConnectionInfo(connection_string_);
@@ -114,8 +126,8 @@ void SyslogInserter::Tick() {
   IRunner::Tick();
   auto* workflow = GetWorkflow();
   auto* syslog_list = workflow != nullptr ?
-                                          workflow->GetData<SyslogList>(data_slot_) :
-                                          nullptr;
+                        workflow->GetData<SyslogList>(data_slot_) :
+                        nullptr;
   if (syslog_list == nullptr) {
     LastError("No syslog list found");
     if (IsOk()) {
@@ -130,7 +142,7 @@ void SyslogInserter::Tick() {
     return;
   }
 
-  // OPen the database and insert all messages in the message queue.
+  // Open the database and insert all messages in the message queue.
   DatabaseGuard db_lock(*database_);
   if (!db_lock.IsOk()) {
     LastError("No database connection.");
@@ -411,5 +423,6 @@ size_t SyslogInserter::GetNofMessages() {
   }
   return count;
 }
+
 
 } // namespace ods

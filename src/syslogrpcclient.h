@@ -30,6 +30,7 @@ public:
   [[nodiscard]] size_t GetCount();
   void GetEventList(SyslogList& event_list);
   void GetSyslogList(SyslogList& syslog_list);
+  void AddEvent(const util::syslog::SyslogMessage& event);
 
   void Clear();
   void Level(util::syslog::SyslogSeverity severity);

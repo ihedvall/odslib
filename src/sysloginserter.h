@@ -17,8 +17,15 @@ namespace ods {
 
 class SyslogInserter : public workflow::IRunner {
 public:
+  /** \brief Default constructor mainly used for unit tests. */
   SyslogInserter();
+
+  /** \brief Constructor with a runner task definition as input. */
   explicit SyslogInserter(const IRunner& source);
+
+  /** \brief Constructor with an existing database. */
+  explicit SyslogInserter(const IDatabase& database);
+
   void Init() override;
   void Tick() override;
   void Exit() override;

@@ -202,6 +202,10 @@ TEST_F(TestSyslogRunner, TestRpcServer) {
               << syslog.Message() << std::endl;
   }
 
+  client.AddEvent(msg);
+  const auto nof_add_msg = client.GetCount();
+  EXPECT_EQ(nof_add_msg, nof_msg + 1);
+
   client.Stop();
   server.Exit();
   inserter.Exit();

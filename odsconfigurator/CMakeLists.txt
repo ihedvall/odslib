@@ -57,7 +57,7 @@ target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpq.lib)
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgtypes.lib)
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgport.lib)
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgcommon.lib)
-target_link_libraries(odsconfig PRIVATE ${OPENSSL_LIBRARIES})
+target_link_libraries(odsconfig PRIVATE gRPC::grpc++)
 
 if (WIN32)
 #target_link_libraries(odsconfig PRIVATE iconv )

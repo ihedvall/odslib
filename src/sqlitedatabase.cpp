@@ -39,7 +39,9 @@ int BusyHandler(void* user, int nof_locks) {
 } // end namespace
 
 namespace ods::detail {
-
+SqliteDatabase::SqliteDatabase() {
+  DatabaseType(DbType::TypeSqlite);
+}
 SqliteDatabase::SqliteDatabase(const std::string &filename) {
   DatabaseType(DbType::TypeSqlite);
   FileName(filename);
