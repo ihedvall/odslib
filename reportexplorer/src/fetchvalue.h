@@ -16,7 +16,7 @@ namespace ods::gui {
 struct ChannelSubscription {
   IItem item;
   mdf::ChannelObserverPtr observer;
-  const mdf::IDataGroup* data_group = nullptr;
+  mdf::IDataGroup* data_group = nullptr;
   mdf::MdfReader* reader = nullptr;
 };
 

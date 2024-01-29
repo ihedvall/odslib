@@ -22,7 +22,6 @@ target_include_directories(test_ods PRIVATE
         ../include
         ../src
         ${utillib_SOURCE_DIR}/include
-        ${GTEST_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIRS}
         ${SQLite3_INCLUDE_DIRS}
         ${PostgreSQL_INCLUDE_DIRS})
@@ -43,7 +42,7 @@ target_link_libraries(test_ods PRIVATE ${SQLite3_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${Boost_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${EXPAT_LIBRARIES})
 target_link_libraries(test_ods PRIVATE ${ZLIB_LIBRARIES})
-target_link_libraries(test_ods PRIVATE ${GTEST_BOTH_LIBRARIES})
+target_link_libraries(test_ods PRIVATE GTest::gtest_main)
 target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpq.lib)
 target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgtypes.lib)
 target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgport.lib)

@@ -54,7 +54,7 @@ void FetchValue::AddItem(const IItem &item) {
   }
 
   const auto dg_index = item.Value<size_t>("DgIndex");
-  const IDataGroup* dg_group = reader->GetDataGroup(dg_index);
+  auto* dg_group = const_cast<IDataGroup*>(reader->GetDataGroup(dg_index));
   if (dg_group == nullptr) {
     return;
   }

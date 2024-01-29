@@ -22,6 +22,8 @@ InstallDirRegKey HKLM "Software\OdsLib" ""
 !define MSVS_DIR "d:\msvs"
 !define APP_BUILD_DIR "..\cmake-build-release"
 !define UTIL_BUILD_DIR "..\cmake-build-release\_deps\utillib-build"
+!define MODEL_SOURCE_DIR "..\odsconfigurator\model"
+
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "..\LICENSE"
@@ -72,6 +74,9 @@ Section "Applications" APP
   
   SetOutPath "$INSTDIR\img"
   File "..\img\*.ico"
+  
+  SetOutPath "$APPDATA\eventlog\model"
+  File "${MODEL_SOURCE_DIR}\eventlogdb.xml"
   
   ;Store installation folder
   WriteRegStr HKLM "Software\OdsLib" "" $INSTDIR

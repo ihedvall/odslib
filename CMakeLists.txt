@@ -7,10 +7,9 @@ project(odslib
         LANGUAGES CXX)
 
 option(BUILD_SHARED_LIBS "Static libraries are preferred" OFF)
-option(BUILD_STATIC_LIBS "Static libraries are normally used" ON)
 option(ODS_DOC "If doxygen is installed, then build documentation in Release mode" OFF)
-option(ODS_TOOLS "If doxygen is installed, then build documentation in Release mode" ON)
-option(ODS_TEST "If doxygen is installed, then build documentation in Release mode" ON)
+option(ODS_TOOLS "If doxygen is installed, then build documentation in Release mode" OFF)
+option(ODS_TEST "If doxygen is installed, then build documentation in Release mode" OFF)
 
 if (NOT COMP_DIR)
     set(COMP_DIR "k:")
@@ -28,14 +27,19 @@ include("script/openssl.cmake")
 include("script/postgresql.cmake")
 include("script/protobuf.cmake")
 include("script/grpc.cmake")
-#include("script/zlib.cmake")
-
-include("script/wxwidgets.cmake")
 
 
-include("script/googletest.cmake")
-include("script/doxygen.cmake")
+if (ODS_TOOLS)
+    include("script/wxwidgets.cmake")
+endif()
 
+if (ODS_TEST)
+    include("script/googletest.cmake")
+endif()
+
+if (ODS_DOC)
+    include("script/doxygen.cmake")
+endif()
 
 #cmake_print_variables(PROTO_SRCS)
 #cmake_print_variables(PROTO_HDRS)
@@ -133,7 +137,7 @@ if (ODS_TOOLS)
     add_subdirectory(eventlogrpcserverd)
 endif()
 
-if (GTEST_FOUND AND ODS_TEST)
+if (ODS_TEST)
     enable_testing()
     add_subdirectory(test)
 endif()
