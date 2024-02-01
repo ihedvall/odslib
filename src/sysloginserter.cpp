@@ -31,7 +31,6 @@ SyslogInserter::SyslogInserter() {
   Template(kSyslogInserter.data());
   Description("Insert syslog messages into a database");
   std::ostringstream temp;
-  temp << "--slot=" << data_slot_ << " ";
   temp << "--dbtype=" << db_type_ << " ";
   temp << "--connection=\"" << connection_string_ << "\"";
   Arguments(temp.str());
@@ -51,7 +50,6 @@ SyslogInserter::SyslogInserter(const IDatabase &database)
   Template(kSyslogInserter.data());
   Description("Insert syslog messages into a database");
   std::ostringstream temp;
-  temp << "--slot=" << data_slot_ << " ";
   temp << "--dbtype=" << db_type_ << " ";
   temp << "--connection=\"" << connection_string_ << "\"";
   Arguments(temp.str());
@@ -66,9 +64,6 @@ void SyslogInserter::ParseArguments() {
   }
   try {
     options_description desc("Available Arguments");
-    desc.add_options() ("slot,S",
-                       value<size_t>(&data_slot_),
-                       "Slot index for data" );
     desc.add_options() ("dbtype,D",
                        value<std::string>(&db_type_),
                        "Database type (default SQLite" );
@@ -126,7 +121,7 @@ void SyslogInserter::Tick() {
   IRunner::Tick();
   auto* workflow = GetWorkflow();
   auto* syslog_list = workflow != nullptr ?
-                        workflow->GetData<SyslogList>(data_slot_) :
+                        workflow->GetData<SyslogList>() :
                         nullptr;
   if (syslog_list == nullptr) {
     LastError("No syslog list found");

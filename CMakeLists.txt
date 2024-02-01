@@ -41,13 +41,11 @@ if (ODS_DOC)
     include("script/doxygen.cmake")
 endif()
 
-#cmake_print_variables(PROTO_SRCS)
-#cmake_print_variables(PROTO_HDRS)
-#cmake_print_variables(CMAKE_CURRENT_BINARY_DIR) # Path to the generated cpp files
+
 set(PROTO_FILES
         proto/syslogservice.proto
         )
-add_library(ods STATIC
+add_library(ods
         src/itable.cpp include/ods/itable.h
         src/idatabase.cpp include/ods/idatabase.h
         src/databaseguard.cpp include/ods/databaseguard.h

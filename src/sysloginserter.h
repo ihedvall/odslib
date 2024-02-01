@@ -44,7 +44,6 @@ public:
   [[nodiscard]] util::syslog::SyslogMessage LastMessage() const;
 private:
   using CacheList = std::map<std::string, int64_t, util::string::IgnoreCase>;
-  size_t data_slot_ = 0;
   std::string db_type_ = "SQLite";
   std::string connection_string_; ///< File name or connection string
   std::unique_ptr<IDatabase> database_;

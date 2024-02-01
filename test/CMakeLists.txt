@@ -61,6 +61,14 @@ target_link_libraries(test_ods PRIVATE secur32)
 target_link_libraries(test_ods PRIVATE crypt32)
 endif()
 
+foreach (pqfile ${PostgreSQL_DEPENDENCIES})
+    add_custom_command(
+            TARGET test_ods
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ARGS ${pqfile} "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+endforeach ()
 
 include(GoogleTest)
 gtest_discover_tests(test_ods)

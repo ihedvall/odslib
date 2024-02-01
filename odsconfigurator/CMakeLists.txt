@@ -67,3 +67,14 @@ target_link_libraries(odsconfig PRIVATE secur32)
 target_link_libraries(odsconfig PRIVATE crypt32)
 #target_link_libraries(odsconfig PRIVATE wsock32)
 endif()
+
+foreach (pqfile ${PostgreSQL_DEPENDENCIES})
+
+#Copy the Postgres DLL/SO files to the current binary directory
+add_custom_command(
+        TARGET odsconfig
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ARGS ${pqfile} "${CMAKE_CURRENT_BINARY_DIR}"
+)
+endforeach ()
