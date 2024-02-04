@@ -61,8 +61,7 @@ target_link_libraries(reportexplorer PRIVATE ${OPENSSL_CRYPTO_LIBRARY})
 endif()
 
 if (WIN32)
-#target_link_libraries(reportexplorer PRIVATE iconv )
+
 target_link_libraries(reportexplorer PRIVATE bcrypt)
 target_link_libraries(reportexplorer PRIVATE ws2_32)
-#target_link_libraries(reportexplorer PRIVATE wsock32)
 endif()

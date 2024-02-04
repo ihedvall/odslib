@@ -7,7 +7,6 @@
 #include "sqlitedatabase.h"
 #include "postgresdb.h"
 #include "sysloginserter.h"
-#include "syslogrpcserver.h"
 #include <util/stringutil.h>
 #include <array>
 #include "template_names.icc"
@@ -16,6 +15,18 @@ using namespace workflow;
 using namespace util::string;
 
 namespace ods {
+OdsFactory::OdsFactory() {
+  name_ = "ODS Factory";
+  description_ = "Tasks against an ODS database.";
+
+  std::array<std::unique_ptr<IRunner>,1> template_list = {
+      std::make_unique<SyslogInserter>(),
+  };
+
+  for ( auto& templ : template_list) {
+    template_list_.emplace(templ->Name(), std::move(templ));
+  }
+}
 
 std::unique_ptr<IEnvironment> OdsFactory::CreateEnvironment(
     EnvironmentType type) {
@@ -53,29 +64,23 @@ std::unique_ptr<IDatabase> OdsFactory::CreateDatabase(DbType type) {
   return database;
 }
 
-std::unique_ptr<workflow::IRunner>
-OdsFactory::CreateTemplateTask(const workflow::IRunner &source) {
+std::unique_ptr<workflow::IRunner> OdsFactory::CreateRunner(const workflow::IRunner& source) const {
   std::unique_ptr<IRunner> runner;
   const auto& template_name = source.Template();
   if (IEquals(template_name, kSyslogInserter.data())) {
       auto temp = std::make_unique<SyslogInserter>(source);
       runner = std::move(temp);
-  } else if (IEquals(template_name, kSyslogRpcServer.data())) {
-      auto temp = std::make_unique<SyslogRpcServer>(source);
-      runner = std::move(temp);
   }
   return runner;
 }
 
-void OdsFactory::CreateDefaultTemplateTask(workflow::WorkflowServer &server) {
-  std::array<std::unique_ptr<IRunner>,2> temp_list = {
-      std::make_unique<SyslogInserter>(),
-      std::make_unique<SyslogRpcServer>(),
-  };
+void OdsFactory::AddFactory(workflow::WorkflowServer &server) {
+  server.AddRunnerFactory(*this);
+}
 
-  for (auto& temp : temp_list) {
-      server.AddTemplate(*temp);
-  }
+OdsFactory &OdsFactory::Instance() {
+  static OdsFactory instance;
+  return instance;
 }
 
 } // end namespace

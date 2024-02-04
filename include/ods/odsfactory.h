@@ -7,24 +7,26 @@
 #include <memory>
 #include "ods/idatabase.h"
 #include "ods/ienvironment.h"
-#include <workflow/irunner.h>
+#include <workflow/irunnerfactory.h>
 #include <workflow/workflowserver.h>
 namespace ods {
 
-class OdsFactory {
+class OdsFactory : public workflow::IRunnerFactory {
  public:
-  OdsFactory() = default;
-
   [[nodiscard]] static std::unique_ptr<IEnvironment>
                 CreateEnvironment(EnvironmentType type);
 
   [[nodiscard]] static std::unique_ptr<IDatabase>
                 CreateDatabase(DbType type);
 
-  [[nodiscard]] static std::unique_ptr<workflow::IRunner>
-                CreateTemplateTask(const workflow::IRunner& source);
+  [[nodiscard]] std::unique_ptr<workflow::IRunner> CreateRunner(
+      const workflow::IRunner& source) const override;
 
-   static void CreateDefaultTemplateTask(workflow::WorkflowServer& server);
+   void AddFactory(workflow::WorkflowServer& server);
+
+   static OdsFactory& Instance();
+ protected:
+   OdsFactory();
 };
 
 } // end namespace

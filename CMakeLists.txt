@@ -25,8 +25,6 @@ include("script/boost.cmake")
 include("script/sqlite3.cmake")
 include("script/openssl.cmake")
 include("script/postgresql.cmake")
-include("script/protobuf.cmake")
-include("script/grpc.cmake")
 
 
 if (ODS_TOOLS)
@@ -42,9 +40,6 @@ if (ODS_DOC)
 endif()
 
 
-set(PROTO_FILES
-        proto/syslogservice.proto
-        )
 add_library(ods
         src/itable.cpp include/ods/itable.h
         src/idatabase.cpp include/ods/idatabase.h
@@ -67,34 +62,9 @@ add_library(ods
         src/eventlogdb.cpp src/eventlogdb.h
         src/postgresdb.cpp src/postgresdb.h
         src/postgresstatement.cpp src/postgresstatement.h
-        src/sysloginserter.cpp src/sysloginserter.h
-        src/syslogrpcserver.cpp src/syslogrpcserver.h
-        src/syslogservice.cpp src/syslogservice.h
-        ${PROTO_FILES}
-        src/syslogrpcclient.cpp src/syslogrpcclient.h)
+        src/sysloginserter.cpp src/sysloginserter.h )
 
-protobuf_generate(
-        TARGET ods
-        OUT_VAR PROTO_GENERATED_FILES
-        LANGUAGE cpp
-        #IMPORT_DIRS ${CMAKE_CURRENT_DIR}/proto
-        #PROTOS proto/syslogservice.proto
-        PROTOC_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
-cmake_print_variables(PROTO_GENERATED_FILES)
-#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS
-#        proto/syslogservice.proto)
 
-protobuf_generate(
-        TARGET ods
-        OUT_VAR GRPC_GENERATED_FILES
-        LANGUAGE grpc
-        GENERATE_EXTENSIONS .grpc.pb.h .grpc.pb.cc
-        PLUGIN "protoc-gen-grpc=\$<TARGET_FILE:gRPC::grpc_cpp_plugin>"
-        #PLUGIN_OPTIONS "generate_mock_code=true"
-        #IMPORT_DIRS ${CMAKE_CURRENT_DIR}/proto
-        #PROTOS proto/syslogservice.proto
-        PROTOC_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR} )
-cmake_print_variables(GRPC_GENERATED_FILES)
 
 target_include_directories(ods PRIVATE ${Boost_INCLUDE_DIRS})
 target_include_directories(ods PRIVATE ${SQLite3_INCLUDE_DIRS})
@@ -103,9 +73,8 @@ target_include_directories(ods PRIVATE ${utillib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${mdflib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${workflowlib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_include_directories(ods PRIVATE ${Protobuf_INCLUDE_DIRS})
-target_include_directories(ods PRIVATE ${gRPC_INCLUDE_DIRS} )
 target_include_directories(ods PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
 target_include_directories(ods PUBLIC
         $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -129,10 +98,6 @@ install(TARGETS ods
 if (wxWidgets_FOUND AND ODS_TOOLS)
     add_subdirectory(odsconfigurator)
     add_subdirectory(reportexplorer)
-endif()
-
-if (ODS_TOOLS)
-    add_subdirectory(eventlogrpcserverd)
 endif()
 
 if (ODS_TEST)

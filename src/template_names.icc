@@ -9,5 +9,4 @@
 
 namespace {
 constexpr std::string_view kSyslogInserter = "SyslogInserter";
-constexpr std::string_view kSyslogRpcServer = "SyslogRpcServer";
 }

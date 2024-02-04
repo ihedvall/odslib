@@ -48,11 +48,6 @@ target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgtypes.lib
 target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgport.lib)
 target_link_libraries(test_ods PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgcommon.lib)
 target_link_libraries(test_ods PRIVATE ${OPENSSL_LIBRARIES})
-target_link_libraries(test_ods PRIVATE absl::log)
-target_link_libraries(test_ods PRIVATE absl::log_internal_check_op)
-target_link_libraries(test_ods PRIVATE utf8_range::utf8_range)
-target_link_libraries(test_ods PRIVATE utf8_range::utf8_validity)
-target_link_libraries(test_ods PRIVATE gRPC::grpc++)
 
 if (WIN32)
 target_link_libraries(test_ods PRIVATE ws2_32)

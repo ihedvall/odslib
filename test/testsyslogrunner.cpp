@@ -11,8 +11,6 @@
 #include "ods/odsfactory.h"
 #include "ods/imodel.h"
 #include "sysloginserter.h"
-#include "syslogrpcserver.h"
-#include "syslogrpcclient.h"
 #include <source_location>
 
 using namespace std::filesystem;
@@ -140,74 +138,6 @@ TEST_F(TestSyslogRunner, TestInsert) {
   const auto count = inserter.GetNofMessages();
   std::cout << "Nof Messages: " << count << std::endl;
   EXPECT_GT(inserter.GetNofMessages(),0);
-  inserter.Exit();
-}
-
-TEST_F(TestSyslogRunner, TestRpcServer) {
-  if (kSkipTest || !kDatabase) {
-    GTEST_SKIP_("Skipped the inserter test");
-  }
-  SyslogInserter inserter;
-  std::ostringstream arg;
-  arg << "--connection=\"" << kDatabase->ConnectionInfo();
-  inserter.Arguments(arg.str());
-  inserter.Init();
-
-  SyslogRpcServer server;
-  server.Arguments(arg.str());
-  server.Init();
-  ASSERT_TRUE(server.IsOk()) << server.LastError();
-
-  SyslogMessage msg;
-  msg.Severity(SyslogSeverity::Informational);
-  msg.Message("Test of RPC");
-
-  SyslogRpcClient client;
-  client.Start();
-
-  EXPECT_TRUE(client.Operable());
-  auto last1 = client.GetLastEvent();
-  EXPECT_TRUE(client.Operable());
-
-  EXPECT_TRUE(inserter.AddOneMessage(msg));
-
-  auto last2 = client.GetLastEvent();
-  EXPECT_TRUE(client.Operable());
-  EXPECT_NE(last1.Index(), last2.Index());
-
-  std::cout << "Last1: " << last1.Message() << std::endl;
-  std::cout << "Last2: " << last2.Message() << std::endl;
-
-  size_t db_count = inserter.GetNofMessages();
-  size_t nof_msg = client.GetCount();
-  EXPECT_GT(nof_msg, 0);
-  EXPECT_EQ(nof_msg, db_count);
-  std::cout << "Nof Msg: " << nof_msg << std::endl;
-
-  SyslogList event_list;
-  client.GetEventList(event_list);
-  EXPECT_EQ(nof_msg, event_list.size());
-
-  for (const auto& event : event_list) {
-    std::cout << "ID: " << event.Index() << ", TEXT: "
-              << event.Message() << std::endl;
-  }
-
-  SyslogList syslog_list;
-  client.GetSyslogList(syslog_list);
-  EXPECT_EQ(nof_msg, syslog_list.size());
-
-  for (const auto& syslog : syslog_list) {
-    std::cout << "ID: " << syslog.Index() << ", TEXT: "
-              << syslog.Message() << std::endl;
-  }
-
-  client.AddEvent(msg);
-  const auto nof_add_msg = client.GetCount();
-  EXPECT_EQ(nof_add_msg, nof_msg + 1);
-
-  client.Stop();
-  server.Exit();
   inserter.Exit();
 }
 
