@@ -9,7 +9,7 @@
 #include <util/syslogmessage.h>
 #include <util/stringutil.h>
 #include <util/logstream.h>
-#include <workflow/iworkflow.h>
+#include <workflow/workflow.h>
 #include "ods/sqlfilter.h"
 #include "ods/odsfactory.h"
 #include "ods/databaseguard.h"
@@ -36,8 +36,8 @@ SyslogInserter::SyslogInserter() {
   Arguments(temp.str());
 }
 
-SyslogInserter::SyslogInserter(const IRunner& source)
-    : IRunner(source) {
+SyslogInserter::SyslogInserter(const ITask& source)
+    : ITask(source) {
   Template(kSyslogInserter.data());
   ParseArguments();
 }
@@ -58,7 +58,7 @@ SyslogInserter::SyslogInserter(const IDatabase &database)
 void SyslogInserter::ParseArguments() {
   std::string arguments = Arguments();
   // If nor arguments are given, the copy the insert syslog task arguments.
-  if (const auto* inserter = GetRunnerByTemplateName(kSyslogInserter.data());
+  if (const auto* inserter = GetTaskByTemplateName(kSyslogInserter.data());
       inserter != nullptr) {
     arguments = inserter->Arguments();
   }
@@ -88,7 +88,7 @@ void SyslogInserter::ParseArguments() {
 }
 
 void SyslogInserter::Init() {
-  IRunner::Init();
+  ITask::Init();
   ParseArguments();
   database_ = OdsFactory::CreateDatabase(
       IDatabase::StringAsDatabaseType(db_type_));
@@ -118,7 +118,7 @@ void SyslogInserter::Init() {
 }
 
 void SyslogInserter::Tick() {
-  IRunner::Tick();
+  ITask::Tick();
   auto* workflow = GetWorkflow();
   auto* syslog_list = workflow != nullptr ?
                         workflow->GetData<SyslogList>() :
@@ -165,7 +165,7 @@ void SyslogInserter::Tick() {
 }
 
 void SyslogInserter::Exit() {
-  IRunner::Exit();
+  ITask::Exit();
   database_.reset();
 }
 

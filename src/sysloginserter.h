@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <workflow/irunner.h>
+#include <workflow/itask.h>
 #include <map>
 #include <mutex>
 #include "ods/imodel.h"
@@ -15,13 +15,13 @@
 #include <util/stringutil.h>
 namespace ods {
 
-class SyslogInserter : public workflow::IRunner {
+class SyslogInserter : public workflow::ITask {
 public:
   /** \brief Default constructor mainly used for unit tests. */
   SyslogInserter();
 
   /** \brief Constructor with a runner task definition as input. */
-  explicit SyslogInserter(const IRunner& source);
+  explicit SyslogInserter(const ITask& source);
 
   /** \brief Constructor with an existing database. */
   explicit SyslogInserter(const IDatabase& database);

@@ -19,7 +19,7 @@ OdsFactory::OdsFactory() {
   name_ = "ODS Factory";
   description_ = "Tasks against an ODS database.";
 
-  std::array<std::unique_ptr<IRunner>,1> template_list = {
+  std::array<std::unique_ptr<ITask>,1> template_list = {
       std::make_unique<SyslogInserter>(),
   };
 
@@ -64,18 +64,18 @@ std::unique_ptr<IDatabase> OdsFactory::CreateDatabase(DbType type) {
   return database;
 }
 
-std::unique_ptr<workflow::IRunner> OdsFactory::CreateRunner(const workflow::IRunner& source) const {
-  std::unique_ptr<IRunner> runner;
+std::unique_ptr<workflow::ITask> OdsFactory::CreateTask(const workflow::ITask& source) const {
+  std::unique_ptr<ITask> task;
   const auto& template_name = source.Template();
   if (IEquals(template_name, kSyslogInserter.data())) {
       auto temp = std::make_unique<SyslogInserter>(source);
-      runner = std::move(temp);
+      task = std::move(temp);
   }
-  return runner;
+  return task;
 }
 
 void OdsFactory::AddFactory(workflow::WorkflowServer &server) {
-  server.AddRunnerFactory(*this);
+  server.AddTaskFactory(*this);
 }
 
 OdsFactory &OdsFactory::Instance() {
