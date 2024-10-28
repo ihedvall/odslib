@@ -26,6 +26,31 @@ IColumn CreateDefaultColumn(BaseId base_id, const std::string &base_name) {
   return column;
 }
 
+bool ITable::operator==(const ITable &table) const {
+  if (application_id_ != table.application_id_) return false;
+  if (parent_id_ >= 0 && table.parent_id_ >= 0 && parent_id_ != table.parent_id_) return false;
+  if (base_id_ != table.base_id_) return false;
+  if (application_name_ != table.application_name_) return false;
+  if (database_name_ != table.database_name_) return false;
+  if (description_ != table.description_) return false;
+  if (security_mode_ != table.security_mode_) return false;
+
+  if (sub_table_list_.size() != table.sub_table_list_.size()) return false;
+  if (column_list_.size() != table.column_list_.size()) return false;
+  for ( const IColumn& column : column_list_) {
+
+    const auto* model_column = table.GetColumnByName(column.ApplicationName());
+    if (model_column == nullptr) {
+      return false;
+    }
+    if (*model_column == column) {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
 void ods::ITable::AddColumn(const IColumn& column) {
   column_list_.push_back(column);
 }
@@ -65,6 +90,18 @@ const ITable *ITable::GetBaseId(ods::BaseId base) const {
   return nullptr;
 }
 
+ITable *ITable::GetBaseId(ods::BaseId base) {
+  if (BaseId() == base) {
+    return this;
+  }
+  for (auto& [name, table] : sub_table_list_) {
+    auto* sub_table = table.GetBaseId(base);
+    if (sub_table != nullptr) {
+      return sub_table;
+    }
+  }
+  return nullptr;
+}
 const ITable *ITable::GetTableByName(const std::string& name) const {
   if (util::string::IEquals(name, application_name_)) {
     return this;
@@ -108,10 +145,17 @@ const IColumn *ITable::GetColumnByDbName(const std::string &name) const {
 }
 
 const IColumn *ITable::GetColumnByBaseName(const std::string &name) const {
-  const auto itr = std::ranges::find_if(column_list_, [&] (const auto& column) {
-    return util::string::IEquals(name,column.BaseName());
+  const auto itr = std::ranges::find_if(column_list_, [&](const auto &column) {
+    return util::string::IEquals(name, column.BaseName());
   });
   return itr == column_list_.cend() ? nullptr : &(*itr);
+}
+
+IColumn *ITable::GetColumnByBaseName(const std::string &name) {
+  auto itr = std::ranges::find_if(column_list_, [&] (const auto& column) {
+    return util::string::IEquals(name,column.BaseName());
+  });
+  return itr == column_list_.end() ? nullptr : &(*itr);
 }
 
 bool ITable::DeleteSubTable(int64_t application_id) {

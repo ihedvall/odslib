@@ -22,7 +22,7 @@ class IModel {
   IModel() = default;
   virtual ~IModel() = default;
 
-  bool operator == (const IModel& model) const = default;
+  [[nodiscard]] bool operator == (const IModel& model) const;
 
   [[nodiscard]] const std::string& Name() const {
     return name_;
@@ -131,7 +131,9 @@ class IModel {
   [[nodiscard]] const ITable* GetTable(int64_t application_id) const;
   [[nodiscard]] const ITable* GetTableByName(const std::string& name) const;
   [[nodiscard]] const ITable* GetTableByDbName(const std::string& name) const;
+
   [[nodiscard]] const ITable* GetBaseId(BaseId base) const;
+  [[nodiscard]] ITable* GetBaseId(BaseId base);
 
   [[nodiscard]] bool IsEmpty() const;
   [[nodiscard]] bool ReadModel(const std::string& filename);

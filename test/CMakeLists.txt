@@ -16,7 +16,13 @@ add_executable(test_ods
         testodsitem.cpp
         testtestdirectory.cpp testlibpq.cpp 
 		testpostgres.cpp testpostgres.h 
-		testsyslogrunner.cpp testsyslogrunner.h)
+		testsyslogrunner.cpp testsyslogrunner.h
+        testmodel.cpp
+        testmodel.h
+        testdatabase.cpp
+        testdatabase.h
+        testodshelper.cpp
+)
 
 target_include_directories(test_ods PRIVATE
         ../include

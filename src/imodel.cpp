@@ -4,7 +4,6 @@
  */
 
 #include <filesystem>
-#include <chrono>
 #include <algorithm>
 #include <ranges>
 
@@ -133,7 +132,7 @@ void SaveColumn(const ods::IColumn& column, IXmlNode& root) {
     type.SetAttribute("decimals", column.NofDecimals());
   }
   if (column.DataLength() > 0) {
-    type.SetAttribute("decimals", column.DataLength());
+    type.SetAttribute("length", column.DataLength());
   }
 
 
@@ -203,13 +202,50 @@ void AddSubTable(const ods::ITable& table, std::vector<const ods::ITable*>& list
 }
 namespace ods {
 
+bool IModel::operator == (const IModel &model) const {
+  if (name_ != model.name_) return false;
+  if (version_ != model.version_) return false;
+  if (description_ != model.description_) return false;
+  if (created_by_ != model.created_by_) return false;
+  if (modified_by_ != model.modified_by_) return false;
+  if (base_version_ != model.base_version_) return false;
+  // Skip the created and modified properties.
+  if (source_name_ != model.source_name_) return false;
+  if (source_type_ != model.source_type_) return false;
+  if (source_info_ != model.source_info_) return false;
+
+
+  const auto table_list = AllTables();
+  const auto model_table_list = model.AllTables();
+
+  if (table_list.size() != model_table_list.size() ) return false;
+
+  for (const ITable* table : table_list) {
+    if (table == nullptr) {
+      continue;
+    }
+    const ITable* model_table = model.GetTable(table->ApplicationId());
+    if (model_table == nullptr) {
+      return false;
+    }
+    if (*table == *model_table) {
+      continue;
+    }
+    return false;
+  }
+
+  // if (table_list_ != model.table_list_) return false;
+  if (enum_list_ != model.enum_list_) return false;
+  return true;
+}
+
 void IModel::AddTable(const ITable &table) { //NOLINT
   ITable copy = table;
   const auto old_app_id = copy.ApplicationId();
   if (old_app_id <= 0 || GetTable(old_app_id) != nullptr) {
     copy.ApplicationId(FindNextTableId(copy.ParentId()));
   }
-  // Remove all sub-table and add them later
+  // Remove all sub-tables and add them later
   auto& table_list = copy.SubTables();
   std::vector<ITable> temp_list;
   temp_list.reserve(table_list.size());
@@ -232,7 +268,7 @@ void IModel::AddTable(const ITable &table) { //NOLINT
     AddTable(sub_table);
   }
 
-  // Add any missing enumerates
+  // Add any missing enumerating
   const auto& column_list = copy.Columns();
   for (const auto& column : column_list) {
     const std::string& enum_name = column.EnumName();
@@ -304,6 +340,24 @@ bool IModel::ReadModel(const std::string &filename) {
   SourceType(xml_file->Property("SourceType",std::string()));
   SourceInfo(xml_file->Property("SourceInfo",std::string()));
 
+  // A common problem is that the unit and physical dimension tables,
+  // not are case-sensitive.
+  // Check that the name columns are case-sensitive.
+  ITable* unit_table = GetBaseId(BaseId::AoUnit);
+  if (unit_table != nullptr) {
+    IColumn* name_column = unit_table->GetColumnByBaseName("name");
+    if (name_column != nullptr) {
+      name_column->CaseSensitive(true);
+    }
+  }
+
+  ITable* dim_table = GetBaseId(BaseId::AoPhysicalDimension);
+  if (dim_table != nullptr) {
+    IColumn* name_column = dim_table->GetColumnByBaseName("name");
+    if (name_column != nullptr) {
+      name_column->CaseSensitive(true);
+    }
+  }
   if (Modified() == 0) {
     try {
       std::filesystem::path file(filename);
@@ -325,7 +379,7 @@ bool IModel::ReadModel(const std::string &filename) {
   IXmlNode::ChildList node_list;
   xml_file->GetChildList(node_list);
 
-  // Read in all enumerates first and then the tables
+  // Read in all enumerations first and then the tables
   for (const auto& node_enum : node_list) {
     if (!node_enum) {
       continue;
@@ -468,6 +522,26 @@ const ITable *IModel::GetBaseId(BaseId base) const {
   return nullptr;
 }
 
+ITable *IModel::GetBaseId(BaseId base) {
+  // Search on top level first which is the normal case for this function
+  auto itr1 = std::ranges::find_if(table_list_, [&] (const auto& itr) -> bool {
+    return itr.second.BaseId() == base;
+  });
+
+  if (itr1 != table_list_.end()) {
+    return &itr1->second;
+  }
+
+  // Plan B is to do a deep search
+  for (auto& [name, table] : table_list_) {
+    ITable* sub_table = table.GetBaseId(base);
+    if (sub_table != nullptr) {
+      return sub_table;
+    }
+  }
+  return nullptr;
+}
+
 const ITable *IModel::GetTableByName(const std::string &name) const {
   for (const auto& itr : table_list_) {
     const auto& table = itr.second;
@@ -534,10 +608,14 @@ bool IModel::DeleteTable(int64_t application_id) {
 
 std::vector<const ITable*> IModel::AllTables() const {
   std::vector<const ITable*> temp_list;
-  for (const auto& itr : table_list_) {
-    temp_list.emplace_back(&itr.second);
-    AddSubTable(itr.second, temp_list);
+  for (const auto& [table_name, table1] : table_list_) {
+    if (table1.DatabaseName().empty()) {
+      continue;
+    }
+    temp_list.emplace_back(&table1);
+    AddSubTable(table1, temp_list);
   }
+
   // Need to sort the list so the referenced tables are created first
   std::vector<const ITable*> sorted_list;
   while (!temp_list.empty()) {
@@ -548,44 +626,45 @@ std::vector<const ITable*> IModel::AllTables() const {
       const auto* table = *itr1;
       if (table == nullptr) {
         itr1 = temp_list.erase(itr1);
+        continue;
+      }
+      bool ref_exist = false;
+      const auto& column_list = table->Columns();
+      for (const auto& column : column_list) {
+         const auto ref_id = column.ReferenceId();
+         if (ref_id == 0 || column.DatabaseName().empty()) {
+           continue;
+         }
+         const auto exist = std::ranges::any_of(temp_list,
+              [&] (const auto* ref_table) {
+                 return ref_table != nullptr &&
+                        ref_table->ApplicationId() == ref_id &&
+                        ref_table->ApplicationId() != table->ApplicationId();
+               });
+         if (exist) {
+           ref_exist = true;
+           break;
+         }
+      } // End of for column
+
+      if (ref_exist) {
+         ++itr1; // Wait for the next iteration
       } else {
-        bool ref_exist = false;
-        const auto& column_list = table->Columns();
-        for (const auto& column : column_list) {
-           const auto ref_id = column.ReferenceId();
-           if (ref_id == 0) {
-             continue;
-           }
-           const auto exist = std::ranges::any_of(temp_list,
-                [&] (const auto* ref_table) {
-                   return ref_table != nullptr &&
-                          ref_table->ApplicationId() == ref_id &&
-                          ref_table->ApplicationId() != table->ApplicationId();
-                 });
-           if (exist) {
-             ref_exist = true;
-             break;
-           }
-        }
-        if (ref_exist) {
-           ++itr1;
-        } else {
-           const ITable* temp_ptr = *itr1;
-           sorted_list.push_back(temp_ptr);
-           itr1 = temp_list.erase(itr1);
-        }
+         sorted_list.emplace_back(*itr1);
+         itr1 = temp_list.erase(itr1);
       }
     }
+
+    // Remaining tables are top level table with no references
     if (temp_list.size() == list_size) {
-      // Something is wrong in the model. Just add remaining tables
-      LOG_ERROR() << "Circular dependency detected. Model: " << Name();
-      for (const auto* temp1 : temp_list) {
-        if (temp1 == nullptr) {
+      // Something is wrong in the model. Just add the remaining tables
+      for (const auto* table2 : temp_list) {
+        if (table2 == nullptr) {
            continue;
         }
-        LOG_ERROR() << "Circular dependency detected. Table: "
-                    << temp1->ApplicationName();
-        sorted_list.push_back(temp1);
+        LOG_ERROR() << "Circular dependency detected. Model: " << Name()
+        << ", Table: " << table2->ApplicationName();
+        sorted_list.push_back(table2);
       }
       temp_list.clear();
     }
@@ -646,5 +725,7 @@ int64_t IModel::FindNextEnumId() const {
   }
   return 0;
 }
+
+
 
 } // end namespace

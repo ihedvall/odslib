@@ -8,16 +8,15 @@
 #include <sstream>
 #include <stdexcept>
 #include <thread>
-#include <chrono>
+
 #include <string_view>
 #include <algorithm>
 
 #include <util/logstream.h>
 #include <util/stringutil.h>
 #include <util/timestamp.h>
-#include "ods/databaseguard.h"
-#include "ods/baseattribute.h"
 
+#include "ods/baseattribute.h"
 #include "sqlitestatement.h"
 
 using namespace std::chrono_literals;
@@ -93,7 +92,13 @@ bool SqliteDatabase::Open() {
       } else {
         sqlite3_trace_v2(database_, 0, nullptr, nullptr);
       }
-      ExecuteSql("PRAGMA foreign_keys = ON");
+
+      if (use_constraints_) {
+        ExecuteSql("PRAGMA foreign_keys = ON");
+      } else {
+        ExecuteSql("PRAGMA foreign_keys = OFF");
+      }
+
       ExecuteSql("BEGIN TRANSACTION");
       transaction_ = true;
       open = true;
@@ -215,7 +220,7 @@ void SqliteDatabase::ConnectionInfo(const std::string &info) {
 }
 
 void SqliteDatabase::FileName(const std::string &filename) {
-  // Seems that the SQLITE is sensible about the slashes
+  // It seems that the SQLITE is sensible about the slashes
   try {
     std::filesystem::path file(filename);
     file.make_preferred();
@@ -477,6 +482,7 @@ size_t SqliteDatabase::FetchItems(const ITable &table, const SqlFilter &filter,
     sql << " " << filter.GetWhereStatement();
   }
 
+  bool first_row = true; // Avoid suppression of DB vs. Model mismatch;
   SqliteStatement select(database_, sql.str());
   for (bool more = select.Step(); more ; more = select.Step()) {
     const auto& column_list = table.Columns();
@@ -484,8 +490,12 @@ size_t SqliteDatabase::FetchItems(const ITable &table, const SqlFilter &filter,
     IItem item;
     item.ApplicationId(table.ApplicationId());
     for (const auto& column : column_list) {
-      const auto index = select.GetColumnIndex(column.DatabaseName());
+      auto index = select.GetColumnIndex(column.DatabaseName());
       if (index < 0) {
+        if (first_row) {
+          LOG_ERROR() << "Database and its ODS model mismatch. Table/Column: " << table.DatabaseName()
+                      << "/" << column.DatabaseName() << " is missing";
+        };
         continue;
       }
       item.AppendAttribute({column.ApplicationName(), column.BaseName(),
@@ -493,6 +503,7 @@ size_t SqliteDatabase::FetchItems(const ITable &table, const SqlFilter &filter,
     }
     OnItem(item);
     ++count;
+    first_row = false;
   }
   return count;
 }

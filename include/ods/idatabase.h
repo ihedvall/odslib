@@ -5,6 +5,8 @@
 #pragma once
 #include <string>
 #include <functional>
+#include <map>
+
 #include "ods/itable.h"
 #include "ods/iitem.h"
 #include "ods/sqlfilter.h"
@@ -20,8 +22,8 @@ enum class DbType : uint8_t {
   TypeSqlServer = 4
 };
 
-bool IsSqlReservedWord(const std::string& word);
-[[maybe_unused]] std::string MakeBlobString(const std::vector<uint8_t>& blob);
+[[nodiscard]] bool IsSqlReservedWord(const std::string& word);
+[[nodiscard]] std::string MakeBlobString(const std::vector<uint8_t>& blob);
 
 class IDatabase {
  public:
@@ -59,7 +61,7 @@ class IDatabase {
    */
   [[nodiscard]] int64_t Exists(const ITable& table, const SqlFilter& filter);
 
-  void Insert(const ITable& table, IItem& row,
+  virtual void Insert(const ITable& table, IItem& row,
                       const SqlFilter& filter);
   void Update(const ITable& table, IItem& row,
                       const SqlFilter& filter);
@@ -97,7 +99,13 @@ class IDatabase {
   virtual void Vacuum();
   virtual void ExportCsv(const std::string& filename, const ITable& table,
                          const SqlFilter& filter);
+
+  std::string DumpDatabase(const std::string& root_dir);
+  bool ReadInDump(const std::string& dump_dir);
+
  protected:
+  bool use_indexes_ = true;  ///< Flag that enable/disable automatic increment indexes;
+  bool use_constraints_ = true; ///< Flag that enables/disables constraints checks
   IDatabase() = default;
 
   void  DatabaseType(DbType type ) {type_of_database_ = type;}
@@ -120,7 +128,25 @@ class IDatabase {
   [[nodiscard]] virtual std::string DataTypeToDbString(DataType type) = 0;
   [[nodiscard]] virtual bool IsDataTypeString(DataType type) = 0;
 
- [[nodiscard]] virtual std::string MakeDateValue(const IAttribute& attr) const;
+  [[nodiscard]] virtual std::string MakeDateValue(const IAttribute& attr) const;
+
+  [[nodiscard]] virtual bool DumpTable(const std::string& dump_dir, const ITable& table);
+  [[nodiscard]] virtual bool DumpRow(const ITable& table, const IItem& row, std::ofstream& out_file) const;
+  /** \brief Specialized insert command for inserting dump row.
+   *
+   * The function inserts dump file row.
+   * When inserting form a dump, the automatic indexes and constraints are
+   * disabled.
+   *
+   * Note that the databases should override this function as the datatypes differs
+   * between the databases. The BLOB and string columns should also be bound.
+   * @param table Ods table object.
+   * @param row Data values to insert into the database
+   */
+  virtual void InsertDumpRow(const ITable& table, IItem& row);
+
+  virtual void EnableIndexing(bool enable);
+  virtual void EnableConstraints(bool enable);
 
  private:
   DbType type_of_database_ = DbType::TypeGeneric;
@@ -128,6 +154,15 @@ class IDatabase {
   std::string connection_info_; ///< Connection string or file name
 
   void AddComments(const ITable& table);
+  [[nodiscard]] std::string CreateDumpDir(const std::string& root_dir) const;
+  [[nodiscard]] bool SaveModelFile(const std::string& dump_dir, const IModel& model) const;
+  [[nodiscard]] static bool ReadInDumpFiles(const std::string& dump_dir, std::string& model_file,
+                       std::map<std::string, std::string>& dbt_list);
+  [[nodiscard]] bool IsEmpty(const IModel& model);
+  [[nodiscard]] bool ReadInData(const IModel& model, const std::map<std::string, std::string>& dbt_list);
+  [[nodiscard]] bool ReadInTable(const ITable& table, const std::string& dbt_file);
+
+
 };
 
 } // end namespace ods

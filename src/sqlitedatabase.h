@@ -44,8 +44,8 @@ class SqliteDatabase : public IDatabase {
                   std::function<void(IItem &)> OnItem) override;
   void Vacuum() override;
 
-  sqlite3* Sqlite3();
 
+  sqlite3* Sqlite3();
 
 protected:
    [[nodiscard]] std::string DataTypeToDbString(DataType type) override;
@@ -60,6 +60,7 @@ protected:
       util::UtilFactory::CreateListen("ListenProxy", "LISSQLITE");
   size_t row_count_ = 0;
   int64_t exec_result_ = 0; ///< Resulting value from an ExecuteSql
+
 
   bool ReadSvcEnumTable(IModel& model) override;
   bool ReadSvcEntTable(IModel& model) override;

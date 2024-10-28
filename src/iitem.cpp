@@ -117,7 +117,7 @@ void IItem::ItemId(int64_t index) {
 void IItem::Name(const std::string& item_name) {
   item_name_ = item_name;
   auto itr = std::ranges::find_if( attribute_list_, [] (const auto& attr) {
-    return IEquals(attr.BaseName(), "id");
+    return IEquals(attr.BaseName(), "name");
   });
 
   if (itr != attribute_list_.end()) {

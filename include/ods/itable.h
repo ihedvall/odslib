@@ -7,8 +7,10 @@
 #include <vector>
 #include <map>
 #include <memory>
-#include "odsdef.h"
-#include "icolumn.h"
+
+#include "ods/odsdef.h"
+#include "ods/icolumn.h"
+
 
 namespace ods {
 
@@ -23,7 +25,7 @@ class ITable {
   ITable() = default;
   virtual ~ITable() = default;
 
-  bool operator == (const ITable& table) const = default;
+  [[nodiscard]] bool operator == (const ITable& table) const;
 
   [[nodiscard]] int64_t ApplicationId() const {
     return application_id_;
@@ -100,12 +102,14 @@ class ITable {
   [[nodiscard]] const ITable* GetTable(int64_t application_id) const;
   [[nodiscard]] const ITable* GetTableByName(const std::string& name) const;
   [[nodiscard]] const ITable* GetTableByDbName(const std::string& name) const;
+
   [[nodiscard]] const ITable* GetBaseId(ods::BaseId base) const;
+  [[nodiscard]] ITable* GetBaseId(ods::BaseId base);
 
   [[nodiscard]] const IColumn* GetColumnByName(const std::string& name) const;
   [[nodiscard]] const IColumn* GetColumnByDbName(const std::string& name) const;
   [[nodiscard]] const IColumn* GetColumnByBaseName(const std::string& name) const;
-
+  [[nodiscard]] IColumn* GetColumnByBaseName(const std::string& name);
  private:
 
   int64_t  application_id_ = 0; ///< Application ID. Shall be > 0.

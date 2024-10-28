@@ -16,6 +16,8 @@ if (NOT COMP_DIR)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(CMAKE_DEBUG_POSTFIX d)
 
 include ("script/utillib.cmake")
@@ -62,7 +64,9 @@ add_library(ods
         src/eventlogdb.cpp src/eventlogdb.h
         src/postgresdb.cpp src/postgresdb.h
         src/postgresstatement.cpp src/postgresstatement.h
-        src/sysloginserter.cpp src/sysloginserter.h )
+        src/sysloginserter.cpp src/sysloginserter.h
+        src/odshelper.cpp
+        src/odshelper.h)
 
 
 

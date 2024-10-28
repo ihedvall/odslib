@@ -77,7 +77,7 @@ void TestSqlite::SetUpTestSuite() {
   auto &log_config = LogConfig::Instance();
   log_config.RootDir(kLogRootDir.data());
   log_config.BaseName(kLogFile.data());
-  log_config.Type(util::log::LogType::LogToFile);
+  log_config.Type(LogType::LogToFile);
   log_config.CreateDefaultLogger();
   try {
     std::error_code err;
