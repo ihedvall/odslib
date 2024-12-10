@@ -18,14 +18,14 @@
 
 #include "ods/baseattribute.h"
 #include "sqlitestatement.h"
-
+#include "odshelper.h"
 using namespace std::chrono_literals;
 using namespace util::log;
 using namespace util::string;
 using namespace util::time;
 namespace {
 
-int BusyHandler(void* user, int nof_locks) {
+int BusyHandler(void* , int nof_locks) {
   if (nof_locks < 1000) {
     std::this_thread::sleep_for(10ms);
     return 1;
@@ -33,7 +33,43 @@ int BusyHandler(void* user, int nof_locks) {
   return 0;
 }
 
+void AddAttribute(const ods::IColumn& column,
+                  const ods::detail::SqliteStatement& select,
+                  int index,
+                  ods::IItem& row) {
+  using namespace ods;
+  if (index < 0) {
+    return;
+  }
+  IAttribute attr(column.ApplicationName(), column.BaseName(), "");
+  switch (column.DataType()) {
+    case DataType::DtEnum:
+    case DataType::DtId:
+    case DataType::DtLongLong:
+    case DataType::DtLong:
+    case DataType::DtByte:
+    case DataType::DtShort:attr.Value(select.Value<int64_t>(index));
+      break;
 
+    case DataType::DtDouble:
+    case DataType::DtFloat:attr.Value(select.Value<double>(index));
+      break;
+
+    case DataType::DtBoolean:attr.Value(select.Value<bool>(index));
+      break;
+
+    case DataType::DtBlob:
+    case DataType::DtByteString:attr.Value(select.Value<std::vector<uint8_t>>(index));
+      break;
+
+    case DataType::DtExternalRef:
+    case DataType::DtDate: // Stored as string in SQLite
+    case DataType::DtString:
+    default:attr.Value(select.Value<std::string>(index));
+      break;
+  }
+  row.AppendAttribute(attr);
+}
 
 } // end namespace
 
@@ -66,6 +102,7 @@ bool SqliteDatabase::Open() {
            open3 == SQLITE_BUSY && locks < 1000;
            open3 = sqlite3_open(FileName().c_str(), &database_) ) {
           std::this_thread::sleep_for(10ms);
+          ++locks;
       }
 
       if (open3 != SQLITE_OK) {
@@ -173,7 +210,7 @@ int SqliteDatabase::ExecCallback(void *object, int rows, char **value_list,
                                  char **column_list) {
   auto* database = reinterpret_cast<SqliteDatabase*>(object);
   if (database == nullptr) {
-    return 0;
+    return 1;
   }
   for (int row = 0; row < rows; ++row) {
     if (value_list == nullptr || column_list == nullptr) {
@@ -186,7 +223,8 @@ int SqliteDatabase::ExecCallback(void *object, int rows, char **value_list,
     try {
       auto temp = std::stoll(value);
       database->exec_result_ += temp;
-    } catch (const std::exception&) {}
+    } catch (const std::exception&) {
+    }
   }
   return 0;
 }
@@ -195,9 +233,9 @@ int64_t SqliteDatabase::ExecuteSql(const std::string &sql) {
   if (database_ == nullptr) {
     throw std::runtime_error("Database not open");
   }
-  exec_result_ = 0;
+  exec_result_ = 0; // Variable updated by the callback.
   char* error = nullptr;
-  const auto exec = sqlite3_exec(database_, sql.c_str(), ExecCallback, this,
+  sqlite3_exec(database_, sql.c_str(), ExecCallback, this,
                                  &error);
   if (error != nullptr) {
     std::ostringstream err;
@@ -438,7 +476,6 @@ void SqliteDatabase::FetchItemList(const ITable &table, ItemList& dest_list, con
     throw std::runtime_error("The database is not open.");
   }
 
-
   if (table.DatabaseName().empty()) {
     return;
   }
@@ -452,17 +489,20 @@ void SqliteDatabase::FetchItemList(const ITable &table, ItemList& dest_list, con
   SqliteStatement select(database_, sql.str());
   for (bool more = select.Step(); more ; more = select.Step()) {
     const auto& column_list = table.Columns();
-    auto item = std::make_unique<IItem>();
-    item->ApplicationId(table.ApplicationId());
+    auto row = std::make_unique<IItem>();
+    if (!row) {
+      throw std::runtime_error("Failed to allocate a row item.");
+    }
+    row->ApplicationId(table.ApplicationId());
 
-    for (const auto& column : column_list) {
-      const auto index = select.GetColumnIndex(column.DatabaseName());
-      if (index < 0) {
+    for (const IColumn& column : column_list) {
+      if (column.DatabaseName().empty()) {
         continue;
       }
-      item->AppendAttribute({column.ApplicationName(), column.BaseName(), select.Value<std::string>(index)});
+      const int index = select.GetColumnIndex(column.DatabaseName());
+      AddAttribute(column, select, index, *row);
     }
-    dest_list.push_back(std::move(item));
+    dest_list.push_back(std::move(row));
   }
 }
 
@@ -482,28 +522,21 @@ size_t SqliteDatabase::FetchItems(const ITable &table, const SqlFilter &filter,
     sql << " " << filter.GetWhereStatement();
   }
 
-  bool first_row = true; // Avoid suppression of DB vs. Model mismatch;
   SqliteStatement select(database_, sql.str());
   for (bool more = select.Step(); more ; more = select.Step()) {
     const auto& column_list = table.Columns();
 
-    IItem item;
-    item.ApplicationId(table.ApplicationId());
-    for (const auto& column : column_list) {
-      auto index = select.GetColumnIndex(column.DatabaseName());
+    IItem row;
+    row.ApplicationId(table.ApplicationId());
+    for (const IColumn& column : column_list) {
+      int index = select.GetColumnIndex(column.DatabaseName());
       if (index < 0) {
-        if (first_row) {
-          LOG_ERROR() << "Database and its ODS model mismatch. Table/Column: " << table.DatabaseName()
-                      << "/" << column.DatabaseName() << " is missing";
-        };
         continue;
       }
-      item.AppendAttribute({column.ApplicationName(), column.BaseName(),
-                             select.Value<std::string>(index)});
+      AddAttribute(column, select, index, row);
     }
-    OnItem(item);
+    OnItem(row);
     ++count;
-    first_row = false;
   }
   return count;
 }
@@ -520,7 +553,7 @@ bool SqliteDatabase::FetchModelEnvironment(IModel &model) {
     model.Name(full_name.stem().string());
     model.SourceInfo(FileName());
 
-    const auto* env_table = model.GetBaseId(BaseId::AoEnvironment);
+    const auto* env_table = model.GetTableByBaseId(BaseId::AoEnvironment);
     if (env_table == nullptr || env_table->DatabaseName().empty()) {
       return true;
     }
@@ -717,6 +750,421 @@ const std::string &SqliteDatabase::FileName() const {
   return IDatabase::ConnectionInfo();
 }
 
+void SqliteDatabase::InsertDumpRow(const ITable &table, IItem &row) {
+  if (!IsOpen()) {
+    throw std::runtime_error("The database is not open");
+  }
+
+  const std::vector<IColumn> &column_list = table.Columns();
+  if (table.DatabaseName().empty() || column_list.empty() ) {
+    return;
+  }
+
+
+  size_t parameter_count = 1; // Bind index of values
+  std::ostringstream insert;
+  std::ostringstream values;
+  insert << "INSERT INTO " << table.DatabaseName() << " (";
+  bool first = true;
+  for (const auto &col1: column_list) {
+    if (col1.DatabaseName().empty()) {
+      continue;
+    }
+    if (!first) {
+      insert << ",";
+      values << ",";
+    } else {
+      first = false;
+    }
+
+    insert << col1.DatabaseName();
+    values << "?" << parameter_count;
+    ++parameter_count;
+  }
+  insert << ") VALUES (" << values.str() << ")";
+
+  SqliteStatement statement(Sqlite3(),insert.str());
+  int value_count = 1;
+  for (const auto &col2: column_list) {
+    if (col2.DatabaseName().empty()) {
+      continue;
+    }
+    const auto *attr = row.GetAttribute(col2.ApplicationName());
+    if (attr != nullptr) {
+      // The user has set the item
+      switch (col2.DataType()) {
+
+        case DataType::DtShort:
+        case DataType::DtByte:
+        case DataType::DtLong:
+        case DataType::DtLongLong:
+        case DataType::DtId:
+        case DataType::DtEnum:
+          if (col2.ReferenceId() > 0 && attr->Value<int64_t>() <= 0) {
+            statement.SetValue(value_count, "NULL");
+          } else {
+            statement.SetValue(value_count, attr->Value<int64_t>());
+          }
+          break;
+
+        case DataType::DtFloat:
+        case DataType::DtDouble:
+          statement.SetValue(value_count, attr->Value<double>());
+          break;
+
+        case DataType::DtBoolean:
+          statement.SetValue(value_count, attr->Value<bool>());
+          break;
+
+        case DataType::DtDate:
+          statement.SetValue(value_count, MakeDateValue(*attr)); // Note that this function normally is database-dependent.
+          break;
+
+        case DataType::DtString:
+        case DataType::DtExternalRef: {
+          const std::string val = attr->Value<std::string>();
+          if (val.empty() && !col2.Obligatory() && col2.DefaultValue().empty()) {
+            statement.SetValue(value_count, "NULL");
+          } else {
+            char* value = sqlite3_mprintf("%Q", val.c_str());
+            statement.SetValue(value_count, value != nullptr ? value : "NULL");
+            sqlite3_free(value);
+          }
+          break;
+        }
+        case DataType::DtByteString:
+        case DataType::DtBlob: {// Convert the Base4 string to a hexadecimal string (X'hexbytes')
+          const std::string base64 = attr->Value<std::string>();
+          if (base64.empty()) {
+            statement.SetValue(value_count, "NULL");
+          } else {
+            const std::vector<uint8_t> byte_array = OdsHelper::FromBase64(base64);
+            statement.SetValue(value_count, byte_array);
+          }
+          break;
+        }
+
+        default:
+          if (col2.ReferenceId() > 0 && attr->Value<int64_t>() <= 0) {
+            statement.SetValue(value_count, "NULL");
+          } else {
+            const std::string value = attr->Value<std::string>();
+            statement.SetValue(value_count,!value.empty() ? value : "NULL");
+          }
+          break;
+      }
+    } else {
+      // The user has not set item. First check the DtDate columns
+      if (IEquals(col2.BaseName(), "ao_created") ||
+          IEquals(col2.BaseName(), "version_date") ||
+          IEquals(col2.BaseName(), "ao_last_modified")) {
+        // If these columns aren't set, then set them to 'now'.
+        // Normal are they set to auto generate.
+        // Note that 'ao_last_modified' is set to null at insert and set at update.
+        const uint64_t now = TimeStampToNs();
+        const std::string timestamp = NsToIsoTime(now, 0);
+        std::ostringstream time;
+        time << "'" << timestamp << "'";
+        statement.SetValue(value_count, time.str()) ;
+      } else if (!col2.DefaultValue().empty()) {
+        if (col2.IsString()) {
+          auto *value = sqlite3_mprintf("%Q", col2.DefaultValue().c_str());
+          statement.SetValue(value_count, value);
+          sqlite3_free(value);
+        } else {
+          statement.SetValue(value_count, col2.DefaultValue());
+        }
+      } else if (col2.Obligatory()) {
+        if (col2.IsString()) {
+          auto *value = sqlite3_mprintf("%Q", "");
+          statement.SetValue(value_count,value);
+          sqlite3_free(value);
+        } else {
+          statement.SetValue(value_count,"0");
+        }
+      } else {
+        statement.SetValue(value_count,"NULL");
+      }
+    }
+    ++value_count;
+  }
+  statement.Step();
+}
+
+void SqliteDatabase::Insert(const ITable &table, IItem &row, const SqlFilter& filter) {
+
+  if (!IsOpen()) {
+    throw std::runtime_error("The database is not open");
+  }
+
+
+  const auto &column_list = table.Columns();
+  // Note that all table should have an index (id) column but some
+  // doesn't so make fixes in case the column is missing.
+  const auto* id_column = table.GetColumnByBaseName("id");
+  if (table.DatabaseName().empty() || column_list.empty()) {
+    return;
+  }
+
+  int column_count = 1;
+  std::ostringstream insert;
+  std::ostringstream values;
+  insert << "INSERT INTO " << table.DatabaseName() << " (";
+  bool first = true;
+  for (const auto &col1: column_list) {
+    if (IEquals(col1.BaseName(), "id") || col1.DatabaseName().empty()) {
+      continue;
+    }
+    if (!first) {
+      insert << ",";
+      values << ",";
+    } else {
+      first = false;
+    }
+    insert << col1.DatabaseName();
+    values << "?" << column_count;
+    ++column_count;
+  }
+  insert << ") VALUES (" << values.str() << ")";
+  if (id_column != nullptr) {
+    insert << " RETURNING " << id_column->DatabaseName();
+  }
+
+  // Bind all columns except any id column
+  SqliteStatement statement(Sqlite3(), insert.str());
+  int value_count = 1;
+  for (const auto &col2: column_list) {
+    if (IEquals(col2.BaseName(), "id") || col2.DatabaseName().empty()) {
+      continue;
+    }
+    const auto *attr = row.GetAttribute(col2.ApplicationName());
+    if (attr != nullptr) {
+      // The user has set the item
+      switch (col2.DataType()) {
+        case DataType::DtShort:
+        case DataType::DtByte:
+        case DataType::DtLong:
+        case DataType::DtLongLong:
+        case DataType::DtId:
+        case DataType::DtEnum:
+          if (col2.ReferenceId() > 0 && attr->Value<int64_t>() <= 0) {
+            statement.SetValue(value_count, "NULL");
+          } else {
+            statement.SetValue(value_count, attr->Value<int64_t>());
+          }
+          break;
+
+        case DataType::DtFloat:
+        case DataType::DtDouble:statement.SetValue(value_count, attr->Value<double>());
+          break;
+
+        case DataType::DtBoolean:statement.SetValue(value_count, attr->Value<bool>());
+          break;
+
+        case DataType::DtDate:
+          statement.SetValue(value_count,
+                             MakeDateValue(*attr)); // Note that this function normally is database-dependent.
+          break;
+
+        case DataType::DtString:
+        case DataType::DtExternalRef: {
+          const std::string val = attr->Value<std::string>();
+          if (val.empty() && !col2.Obligatory() && col2.DefaultValue().empty()) {
+            statement.SetValue(value_count, "NULL");
+          } else {
+            char *value = sqlite3_mprintf("%Q", val.c_str());
+            statement.SetValue(value_count, value != nullptr ? value : "NULL");
+            sqlite3_free(value);
+          }
+          break;
+        }
+        case DataType::DtByteString:
+        case DataType::DtBlob: {// Convert the Base4 string to a hexadecimal string (X'hexbytes')
+          const std::string base64 = attr->Value<std::string>();
+          if (base64.empty()) {
+            statement.SetValue(value_count, "NULL");
+          } else {
+            const std::vector<uint8_t> byte_array = OdsHelper::FromBase64(base64);
+            statement.SetValue(value_count, byte_array);
+          }
+          break;
+        }
+
+        default:
+          if (col2.ReferenceId() > 0 && attr->Value<int64_t>() <= 0) {
+            statement.SetValue(value_count, "NULL");
+          } else {
+            const std::string value = attr->Value<std::string>();
+            statement.SetValue(value_count, !value.empty() ? value : "NULL");
+          }
+          break;
+
+      }
+    } else {
+      // The user has not set item. First check the DtDate columns
+      if (IEquals(col2.BaseName(), "ao_created") ||
+          IEquals(col2.BaseName(), "version_date") ||
+          IEquals(col2.BaseName(), "ao_last_modified")) {
+        // If these columns aren't set, then set them to 'now'.
+        // Normal are they set to auto generate.
+        // Note that 'ao_last_modified' is set to null at insert and set at update.
+        const uint64_t now = TimeStampToNs();
+        const std::string timestamp = NsToIsoTime(now, 0);
+        std::ostringstream time;
+        time << "'" << timestamp << "'";
+        statement.SetValue(value_count, time.str());
+      } else if (!col2.DefaultValue().empty()) {
+        if (col2.IsString()) {
+          auto *value = sqlite3_mprintf("%Q", col2.DefaultValue().c_str());
+          statement.SetValue(value_count, value);
+          sqlite3_free(value);
+        } else {
+          statement.SetValue(value_count, col2.DefaultValue());
+        }
+      } else if (col2.Obligatory()) {
+        if (col2.IsString()) {
+          auto *value = sqlite3_mprintf("%Q", "");
+          statement.SetValue(value_count, value);
+          sqlite3_free(value);
+        } else {
+          statement.SetValue(value_count, 0LL);
+        }
+      } else {
+        statement.SetValue(value_count, "NULL");
+      }
+    }
+    ++value_count;
+  }
+  statement.Step();
+  const auto idx = statement.Value<int64_t>(0);
+  row.ItemId(idx);
+}
+
+
+void SqliteDatabase::Update(const ITable &table, IItem &row, const SqlFilter& filter) {
+
+  if (!IsOpen()) {
+    throw std::runtime_error("The database is not open");
+  }
+
+  const auto &column_list = table.Columns();
+  if (table.DatabaseName().empty() || column_list.empty()) {
+    return;
+  }
+
+  int column_count = 1;
+  std::ostringstream update;
+  update << "UPDATE " << table.DatabaseName() << " SET ";
+  bool first = true;
+  for (const auto &col1: column_list) {
+    if (col1.DatabaseName().empty() || IEquals(col1.BaseName(), "id")) {
+      continue;
+    }
+
+    const bool update_last_changed = IEquals(col1.BaseName(), "ao_last_modified") ||
+      IEquals(col1.BaseName(), "version_date");
+    const auto *attr = row.GetAttribute(col1.ApplicationName());
+    if (attr == nullptr && !update_last_changed) {
+      // Do not change current value
+      continue;
+    }
+
+    if (!first) {
+      update << ",";
+    } else {
+      first = false;
+    }
+    update << col1.DatabaseName() << "=?" << column_count; // Bind value
+    ++column_count;
+  }
+  update << " " << filter.GetWhereStatement();
+
+  // Bind input values.
+  const uint64_t now = TimeStampToNs();
+  int value_count = 1;
+  SqliteStatement statement(Sqlite3(), update.str());
+  for (const auto &col2: column_list) {
+    if (col2.DatabaseName().empty() || IEquals(col2.BaseName(), "id")) {
+      continue;
+    }
+    const bool update_last_changed = IEquals(col2.BaseName(), "ao_last_modified") ||
+        IEquals(col2.BaseName(), "version_date");
+    const auto *attr = row.GetAttribute(col2.ApplicationName());
+    if (attr == nullptr && !update_last_changed) {
+      // Do not change current value
+      continue;
+    }
+
+    if (update_last_changed && attr == nullptr) {
+      const std::string time_string = NsToIsoTime(now, 0); // Ignore milliseconds
+      auto *value = sqlite3_mprintf("%Q", time_string.c_str());
+      statement.SetValue(value_count, value);
+      sqlite3_free(value);
+      ++value_count;
+      continue;
+    }
+
+    if (attr == nullptr || (attr->IsValueEmpty() && !col2.Obligatory()) ) {
+      statement.SetValue(value_count, "NULL");
+      ++value_count;
+      continue;
+    }
+
+    switch (col2.DataType()) {
+      case DataType::DtByte:
+      case DataType::DtLong:
+      case DataType::DtLongLong:
+      case DataType::DtId:
+      case DataType::DtEnum:
+      case DataType::DtShort: {
+        const auto value = attr->Value<int64_t>();
+        statement.SetValue(value_count, value);
+        break;
+      }
+
+      case DataType::DtDouble:
+      case DataType::DtFloat: {
+        const auto value = attr->Value<double>();
+        statement.SetValue(value_count, value);
+        break;
+      }
+
+      case DataType::DtBoolean: {
+        const auto value = attr->Value<bool>();
+        statement.SetValue(value_count, value ? 1LL : 0LL);
+        break;
+      }
+
+      case DataType::DtDate: {
+        const auto time_string = attr->Value<std::string>();
+        auto *value = sqlite3_mprintf("%Q", time_string.c_str());
+        statement.SetValue(value_count, value);
+        sqlite3_free(value);
+        break;
+      }
+
+      case DataType::DtBlob:
+      case DataType::DtByteString: {
+        const auto base64 = attr->Value<std::string>();
+        statement.SetValue(value_count, OdsHelper::FromBase64(base64));
+        break;
+      }
+
+      case DataType::DtExternalRef:
+      case DataType::DtString:
+      default: {// Default treat as string
+        const std::string val = attr->Value<std::string>();
+        auto *value = sqlite3_mprintf("%Q", val.c_str());
+        statement.SetValue(value_count, value);
+        sqlite3_free(value);
+        break;
+      }
+    } // end switch
+    ++value_count;
+  }
+
+  statement.Step();
+}
 
 } // end namespace ods
 

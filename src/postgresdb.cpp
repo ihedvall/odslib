@@ -457,7 +457,7 @@ bool PostgresDb::FetchModelEnvironment(IModel &model) {
       model.Name(full_name.stem().string());
       model.SourceInfo(FileName());
 */
-      const auto* env_table = model.GetBaseId(BaseId::AoEnvironment);
+      const auto* env_table = model.GetTableByBaseId(BaseId::AoEnvironment);
       if (env_table == nullptr || env_table->DatabaseName().empty()) {
         return true;
       }

@@ -63,9 +63,10 @@ class IDatabase {
 
   virtual void Insert(const ITable& table, IItem& row,
                       const SqlFilter& filter);
-  void Update(const ITable& table, IItem& row,
+  virtual void Update(const ITable& table, IItem& row,
                       const SqlFilter& filter);
   virtual void Delete(const ITable& table, const SqlFilter& filter);
+
   virtual int64_t ExecuteSql(const std::string& sql) = 0;
   virtual size_t Count(const ITable& table, const SqlFilter& filter);
 
@@ -128,6 +129,16 @@ class IDatabase {
   [[nodiscard]] virtual std::string DataTypeToDbString(DataType type) = 0;
   [[nodiscard]] virtual bool IsDataTypeString(DataType type) = 0;
 
+  /** \brief Converts an attribute value to a SQL string.
+   *
+   * This function is database dependent and converts an attribute
+   * ISO timestamp string into the database timestamp string.
+   * By default this function convert to a SQLite string which
+   * happens to be just the attribute string value with pre/post
+   * dots.
+   * @param attr Column attribute object
+   * @return SQL string that the database can use
+   */
   [[nodiscard]] virtual std::string MakeDateValue(const IAttribute& attr) const;
 
   [[nodiscard]] virtual bool DumpTable(const std::string& dump_dir, const ITable& table);

@@ -12,6 +12,7 @@
 #include "odsdocument.h"
 
 namespace ods::gui {
+
 class ChildFrame : public wxDocMDIChildFrame {
  public:
   ChildFrame(wxDocument *doc,
@@ -56,6 +57,13 @@ class ChildFrame : public wxDocMDIChildFrame {
   void OnAddEnumItem(wxCommandEvent& event);
   void OnEditEnumItem(wxCommandEvent& event);
   void OnDeleteEnumItem(wxCommandEvent& event);
+
+  void OnUpdateRelation(wxUpdateUIEvent& event);
+  void OnUpdateSingleRelationSelected(wxUpdateUIEvent& event);
+  void OnUpdateRelationSelected(wxUpdateUIEvent& event);
+  void OnAddRelation(wxCommandEvent& event);
+  void OnEditRelation(wxCommandEvent& event);
+  void OnDeleteRelation(wxCommandEvent& event);
 
   wxDECLARE_EVENT_TABLE();
 

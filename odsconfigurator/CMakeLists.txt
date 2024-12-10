@@ -23,12 +23,16 @@ add_executable(odsconfig
         src/enumdialog.cpp src/enumdialog.h
         src/enumitemdialog.cpp src/enumitemdialog.h
         src/appnamevalidator.cpp src/appnamevalidator.h
-        src/postgresdialog.cpp src/postgresdialog.h)
+        src/postgresdialog.cpp src/postgresdialog.h
+        src/relationpanel.cpp
+        src/relationpanel.h
+        src/relationdialog.cpp
+        src/relationdialog.h)
 
 
 target_include_directories(odsconfig PRIVATE ${wxWidgets_INCLUDE_DIRS})
 target_include_directories(odsconfig  PRIVATE ${Boost_INCLUDE_DIRS})
-target_include_directories(odsconfig PRIVATE ${SQLite3_INCLUDE_DIRS})
+target_include_directories(odsconfig PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../extern/sqlite/src)
 target_include_directories(odsconfig PRIVATE  ${PostgreSQL_INCLUDE_DIRS})
 target_include_directories(odsconfig PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
 
@@ -51,7 +55,7 @@ target_link_libraries(odsconfig PRIVATE ${EXPAT_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${wxWidgets_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${Boost_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${ZLIB_LIBRARIES})
-target_link_libraries(odsconfig PRIVATE ${SQLite3_LIBRARIES})
+
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpq.lib)
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgtypes.lib)
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgport.lib)

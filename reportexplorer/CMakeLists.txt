@@ -5,7 +5,6 @@ project(ReportExplorer
         VERSION 1.0
         DESCRIPTION "Report Explorer"
         LANGUAGES CXX)
-include("../script/sqlite3.cmake")
 
 add_executable(reportexplorer
         src/reportexplorer.cpp src/reportexplorer.h
@@ -27,7 +26,7 @@ add_executable(reportexplorer
 
 target_include_directories(reportexplorer PRIVATE ${wxWidgets_INCLUDE_DIRS})
 target_include_directories(reportexplorer PRIVATE ${Boost_INCLUDE_DIRS})
-target_include_directories(reportexplorer PRIVATE ${SQLite3_INCLUDE_DIRS})
+
 target_include_directories(reportexplorer PRIVATE ${mdflib_SOURCE_DIR}/include)
 target_include_directories(reportexplorer PRIVATE ${utillib_SOURCE_DIR}/include)
 target_include_directories(reportexplorer PRIVATE ${odslib_SOURCE_DIR}/include)
@@ -52,7 +51,7 @@ target_link_libraries(reportexplorer PRIVATE ${EXPAT_LIBRARIES})
 target_link_libraries(reportexplorer PRIVATE ${wxWidgets_LIBRARIES})
 target_link_libraries(reportexplorer PRIVATE ${Boost_LIBRARIES})
 target_link_libraries(reportexplorer PRIVATE ${ZLIB_LIBRARIES})
-target_link_libraries(reportexplorer PRIVATE ${SQLite3_LIBRARIES})
+
 
 if (MINGW)
 target_link_libraries(reportexplorer PRIVATE crypto)

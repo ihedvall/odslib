@@ -58,7 +58,8 @@ void AppendSubTable(wxTreeListCtrl& tree_list, wxTreeListItem& root, const ods::
     const auto& sub_table = itr.second;
     const auto bmp = BaseIdImage(sub_table.BaseId());
     auto item_root = tree_list.AppendItem(root,sub_table.ApplicationName(), bmp, bmp);
-    tree_list.SetItemText(item_root, 1, BaseIdToUserText(sub_table.BaseId()));
+    tree_list.SetItemText(item_root, 1, wxString::FromUTF8( BaseIdToUserText(sub_table.BaseId()) ));
+    tree_list.SetItemText(item_root, 2, wxString::FromUTF8( sub_table.DatabaseName() ));
     AppendSubTable(tree_list, item_root, sub_table);
   }
 }
@@ -97,6 +98,16 @@ wxBEGIN_EVENT_TABLE(TablePanel, wxPanel) // NOLINT
         EVT_MENU(kIdIndexFlag, TablePanel::OnIndexFlag)
         EVT_MENU(kIdNoIndexFlag, TablePanel::OnNoIndexFlag)
 
+        EVT_UPDATE_UI(kIdObligatoryFlag, TablePanel::OnUpdateColumnSelected)
+        EVT_UPDATE_UI(kIdNoObligatoryFlag, TablePanel::OnUpdateColumnSelected)
+        EVT_MENU(kIdObligatoryFlag, TablePanel::OnObligatoryFlag)
+        EVT_MENU(kIdNoObligatoryFlag, TablePanel::OnNoObligatoryFlag)
+
+        EVT_UPDATE_UI(kIdCaseSensitiveFlag, TablePanel::OnUpdateColumnSelected)
+        EVT_UPDATE_UI(kIdNoCaseSensitiveFlag, TablePanel::OnUpdateColumnSelected)
+        EVT_MENU(kIdCaseSensitiveFlag, TablePanel::OnCaseSensitiveFlag)
+        EVT_MENU(kIdNoCaseSensitiveFlag, TablePanel::OnNoCaseSensitiveFlag)
+
         EVT_UPDATE_UI(kIdColumnUp, TablePanel::OnUpdateColumnSelected)
         EVT_UPDATE_UI(kIdColumnDown, TablePanel::OnUpdateColumnSelected)
         EVT_MENU(kIdColumnUp, TablePanel::OnColumnUp)
@@ -120,28 +131,31 @@ TablePanel::TablePanel(wxWindow *parent)
       down_image_("DOWN", wxBITMAP_TYPE_BMP_RESOURCE) {
   image_list_.Add(wxBitmap("TREE_LIST", wxBITMAP_TYPE_BMP_RESOURCE));
   auto *splitter = new wxSplitterWindow(this);
-  left_ = new wxTreeListCtrl(splitter, kIdTableList, wxDefaultPosition, {300, 600},
+  left_ = new wxTreeListCtrl(splitter, kIdTableList, wxDefaultPosition, {400, 780},
                              wxTL_SINGLE | wxTL_DEFAULT_STYLE);
-  left_->AppendColumn("Name");
-  left_->AppendColumn("Base Id");
+  left_->AppendColumn("App Name");
+  left_->AppendColumn("Base ID");
+  left_->AppendColumn("DB Name");
+
   left_->SetImageList(&image_list_);
 
   auto* right_panel = new wxPanel(splitter);
-  right_ = new wxListView(right_panel, kIdColumnList, wxDefaultPosition, {900, 600}, wxLC_REPORT);
+  right_ = new wxListView(right_panel, kIdColumnList, wxDefaultPosition, {800, 780}, wxLC_REPORT);
   right_->AppendColumn("Flags", wxLIST_FORMAT_LEFT, 50);
-  right_->AppendColumn("Name", wxLIST_FORMAT_LEFT, 100);
-  right_->AppendColumn("DB", wxLIST_FORMAT_LEFT, 100);
-  right_->AppendColumn("Base", wxLIST_FORMAT_LEFT, 100);
+  right_->AppendColumn("App Name", wxLIST_FORMAT_LEFT, 100);
+  right_->AppendColumn("DB Name", wxLIST_FORMAT_LEFT, 100);
+  right_->AppendColumn("Base Name", wxLIST_FORMAT_LEFT, 100);
   right_->AppendColumn("Label", wxLIST_FORMAT_LEFT, 150);
   right_->AppendColumn("Type", wxLIST_FORMAT_LEFT,200);
   right_->AppendColumn("Reference", wxLIST_FORMAT_LEFT, 100);
   right_->AppendColumn("Description", wxLIST_FORMAT_LEFT, wxLIST_AUTOSIZE_USEHEADER);
+
   table_info_ = new wxStaticText(right_panel,wxID_ANY, wxEmptyString);
   auto font = table_info_->GetFont();
   font.MakeLarger();
   table_info_->SetFont(font);
 
-  splitter->SplitVertically(left_, right_panel, 300);
+  splitter->SplitVertically(left_, right_panel, 400);
 
   auto* right_sizer = new wxBoxSizer(wxVERTICAL);
   right_sizer->Add(table_info_, 0, wxALIGN_LEFT | wxALL | wxEXPAND , 0);
@@ -193,7 +207,8 @@ void TablePanel::RedrawTableList() {
       }
       const auto bmp = BaseIdImage(table.BaseId());
       auto item_root = left_->AppendItem(root, table.ApplicationName(), bmp, bmp);
-      left_->SetItemText(item_root, 1, BaseIdToUserText(table.BaseId()));
+      left_->SetItemText(item_root, 1, wxString::FromUTF8( BaseIdToUserText(table.BaseId()) )) ;
+      left_->SetItemText(item_root, 2, wxString::FromUTF8( table.DatabaseName() ));
       AppendSubTable(*left_, item_root, table);
     }
   }
@@ -208,7 +223,8 @@ void TablePanel::RedrawTableList() {
     }
     const auto bmp = BaseIdImage(table.BaseId());
     auto item_root = left_->AppendItem(root, table.ApplicationName(), bmp, bmp);
-    left_->SetItemText(item_root, 1, BaseIdToUserText(table.BaseId()));
+    left_->SetItemText(item_root, 1, wxString::FromUTF8( BaseIdToUserText(table.BaseId()) )) ;
+    left_->SetItemText(item_root, 2, wxString::FromUTF8( table.DatabaseName() ));
     AppendSubTable(*left_, item_root, table);
   }
 
@@ -358,18 +374,17 @@ void TablePanel::OnTableActivated(wxTreeListEvent&) {
   }
 
   TableDialog dialog(this, doc->GetModel(), *selected);
+  dialog.SetPosition(wxGetMousePosition());
   const auto ret = dialog.ShowModal();
   if (ret != wxID_OK) {
     return;
   }
   auto* update = const_cast<ITable*>(selected);
-  if (update != nullptr) {
-    *update = dialog.GetTable();
-  }
+  *update = dialog.GetTable();
   Update();
 }
 
-void TablePanel::OnTableRightClick(wxTreeListEvent &event) {
+void TablePanel::OnTableRightClick(wxTreeListEvent &) {
   wxMenu menu;
   menu.Append(kIdAddTable,wxGetStockLabel(wxID_ADD));
   menu.Append(kIdEditTable, wxGetStockLabel(wxID_EDIT));
@@ -380,17 +395,23 @@ void TablePanel::OnTableRightClick(wxTreeListEvent &event) {
   PopupMenu(&menu);
 }
 
-void TablePanel::OnColumnRightClick(wxContextMenuEvent& event) {
+void TablePanel::OnColumnRightClick(wxContextMenuEvent&) {
   wxMenu menu;
   menu.Append(kIdAddColumn,wxGetStockLabel(wxID_ADD));
   menu.Append(kIdEditColumn, wxGetStockLabel(wxID_EDIT));
   menu.Append(kIdDeleteColumn, wxGetStockLabel(wxID_DELETE));
   menu.AppendSeparator();
   menu.Append(kIdUniqueFlag, L"Set Unique Column");
-  menu.Append(kIdNoUniqueFlag, L"Unset Unique Column" );
+  menu.Append(kIdNoUniqueFlag, L"Reset Unique Column" );
   menu.AppendSeparator();
   menu.Append(kIdIndexFlag, L"Set Indexed Column");
-  menu.Append(kIdNoIndexFlag, L"Unset Indexed Column" );
+  menu.Append(kIdNoIndexFlag, L"Reset Indexed Column" );
+  menu.AppendSeparator();
+  menu.Append(kIdObligatoryFlag, L"Set Obligatory Column");
+  menu.Append(kIdNoObligatoryFlag, L"Reset Obligatory Column" );
+  menu.AppendSeparator();
+  menu.Append(kIdCaseSensitiveFlag, L"Set Case-Sensitive Column");
+  menu.Append(kIdNoCaseSensitiveFlag, L"Reset Case-Sensitive Column" );
   menu.AppendSeparator();
   menu.Append(kIdColumnUp, L"Move Up");
   menu.Append(kIdColumnDown, L"Move Down" );
@@ -406,7 +427,7 @@ void TablePanel::OnUpdateSingleColumnSelected(wxUpdateUIEvent &event) {
   event.Enable(right_ != nullptr && right_->GetSelectedItemCount() == 1);
 }
 
-void TablePanel::OnAddColumn(wxCommandEvent &event) {
+void TablePanel::OnAddColumn(wxCommandEvent &) {
   auto* doc = GetDocument();
   if (doc == nullptr || right_ == nullptr) {
     return;
@@ -420,6 +441,7 @@ void TablePanel::OnAddColumn(wxCommandEvent &event) {
   empty.TableId(table->ApplicationId());
   empty.DataType(DataType::DtString);
   ColumnDialog dialog(this, doc->GetModel(), empty);
+  dialog.SetPosition(wxGetMousePosition());
   const auto ret = dialog.ShowModal();
   if (ret != wxID_OK) {
     return;
@@ -428,7 +450,7 @@ void TablePanel::OnAddColumn(wxCommandEvent &event) {
   RedrawColumnList();
 }
 
-void TablePanel::OnEditColumn(wxCommandEvent &) {
+void TablePanel::OnEditColumn(wxCommandEvent &event) {
   auto* doc = GetDocument();
   if (doc == nullptr) {
     return;
@@ -442,6 +464,7 @@ void TablePanel::OnEditColumn(wxCommandEvent &) {
     return;
   }
   ColumnDialog dialog(this, doc->GetModel(), *column);
+  dialog.SetPosition( wxGetMousePosition() );
   const auto ret = dialog.ShowModal();
   if (ret != wxID_OK) {
     return;
@@ -466,7 +489,7 @@ void TablePanel::OnEditColumn(wxCommandEvent &) {
   RedrawColumnList();
 }
 
-void TablePanel::OnDeleteColumn(wxCommandEvent &event) {
+void TablePanel::OnDeleteColumn(wxCommandEvent &) {
   auto* doc = GetDocument();
   if (doc == nullptr) {
     return;
@@ -478,7 +501,7 @@ void TablePanel::OnDeleteColumn(wxCommandEvent &event) {
   const auto& column_list = table->Columns();
   std::vector<std::string> del_list;
   for (auto item = right_->GetFirstSelected(); item >= 0; item = right_->GetNextSelected(item)) {
-    if (item >= 0 || item < column_list.size()) {
+    if (item < column_list.size()) {
       const auto& column = column_list[item];
       del_list.emplace_back(column.ApplicationName());
     }
@@ -605,6 +628,81 @@ void TablePanel::OnNoIndexFlag(wxCommandEvent&) {
   RedrawColumnList();
 }
 
+void TablePanel::OnObligatoryFlag(wxCommandEvent&) {
+  OdsDocument* doc = GetDocument();
+  if (doc == nullptr || right_ == nullptr) {
+    return;
+  }
+  ITable* table = doc->GetSelectedTable();
+  if (table == nullptr) {
+    return;
+  }
+  for (auto item = right_->GetFirstSelected(); item >= 0; item = right_->GetNextSelected(item)) {
+    const IColumn* column_c = table->GetColumnByName(right_->GetItemText(item, 1).utf8_string());
+    auto* column = const_cast<IColumn*>(column_c);
+    if (column != nullptr) {
+      column->Obligatory(true);
+    }
+  }
+  RedrawColumnList();
+}
+
+void TablePanel::OnNoObligatoryFlag(wxCommandEvent&) {
+  OdsDocument* doc = GetDocument();
+  if (doc == nullptr || right_ == nullptr) {
+    return;
+  }
+  ITable* table = doc->GetSelectedTable();
+  if (table == nullptr) {
+    return;
+  }
+  for (auto item = right_->GetFirstSelected(); item >= 0; item = right_->GetNextSelected(item)) {
+    const IColumn* column_c = table->GetColumnByName(right_->GetItemText(item, 1).utf8_string());
+    auto* column = const_cast<IColumn*>(column_c);
+    if (column != nullptr) {
+      column->Obligatory(false);
+    }
+  }
+  RedrawColumnList();
+}
+
+void TablePanel::OnCaseSensitiveFlag(wxCommandEvent&) {
+  OdsDocument* doc = GetDocument();
+  if (doc == nullptr || right_ == nullptr) {
+    return;
+  }
+  ITable* table = doc->GetSelectedTable();
+  if (table == nullptr) {
+    return;
+  }
+  for (auto item = right_->GetFirstSelected(); item >= 0; item = right_->GetNextSelected(item)) {
+    const IColumn* column_c = table->GetColumnByName(right_->GetItemText(item, 1).utf8_string());
+    auto* column = const_cast<IColumn*>(column_c);
+    if (column != nullptr) {
+      column->CaseSensitive(true);
+    }
+  }
+  RedrawColumnList();
+}
+
+void TablePanel::OnNoCaseSensitiveFlag(wxCommandEvent&) {
+  OdsDocument* doc = GetDocument();
+  if (doc == nullptr || right_ == nullptr) {
+    return;
+  }
+  ITable* table = doc->GetSelectedTable();
+  if (table == nullptr) {
+    return;
+  }
+  for (auto item = right_->GetFirstSelected(); item >= 0; item = right_->GetNextSelected(item)) {
+    const IColumn* column_c = table->GetColumnByName(right_->GetItemText(item, 1).utf8_string());
+    auto* column = const_cast<IColumn*>(column_c);
+    if (column != nullptr) {
+      column->CaseSensitive(false);
+    }
+  }
+  RedrawColumnList();
+}
 void TablePanel::OnColumnUp(wxCommandEvent&) {
   auto* doc = GetDocument();
   if (doc == nullptr || right_ == nullptr) {
@@ -626,7 +724,7 @@ void TablePanel::OnColumnUp(wxCommandEvent&) {
     if (selected.find(name) != selected.cend() && itr != column_list.begin()) {
       auto prev = itr;
       --prev;
-      IColumn temp = *itr;
+      const IColumn temp(*itr);
       *itr = *prev;
       *prev = temp;
     }
@@ -655,7 +753,7 @@ void TablePanel::OnColumnDown(wxCommandEvent&) {
     if (selected.find(name) != selected.cend() && itr != column_list.rbegin()) {
       auto prev = itr;
       --prev;
-      IColumn temp = *itr;
+      const IColumn temp(*itr);
       *itr = *prev;
       *prev = temp;
     }
@@ -677,33 +775,34 @@ void TablePanel::OnUpdateTableSelected(wxUpdateUIEvent &event) {
 }
 
 void TablePanel::OnUpdateCopyTableExist(wxUpdateUIEvent &event) {
-  auto& app = wxGetApp();
-  event.Enable(!app.CopyTable().ApplicationName().empty());
+  const OdsConfig& app = wxGetApp();
+  const ITable* table = app.CopyTable();
+  event.Enable(table != nullptr);
 }
 
-void TablePanel::OnCopyTable(wxCommandEvent& event) {
-  auto* doc = GetDocument();
-  const auto* selected = doc != nullptr ? doc->GetSelectedTable() : nullptr;
-  auto& app = wxGetApp();
-  if (selected != nullptr) {
-    app.CopyTable(*selected);
+void TablePanel::OnCopyTable(wxCommandEvent& ) {
+  OdsDocument* doc = GetDocument();
+  OdsConfig& app = wxGetApp();
+  if (const ITable* selected = doc != nullptr ? doc->GetSelectedTable() : nullptr;
+    selected != nullptr) {
+    app.CopyTable(selected);
   }
 }
 
-void TablePanel::OnPasteTable(wxCommandEvent& event) {
-  auto* doc = GetDocument();
+void TablePanel::OnPasteTable(wxCommandEvent& ) {
+  OdsDocument* doc = GetDocument();
   if (doc == nullptr) {
     return;
   }
-  auto& app = wxGetApp();
-  const auto& table = app.CopyTable();
-  if (table.ApplicationName().empty()) {
+  OdsConfig& app = wxGetApp();
+  const ITable* copy_table = app.CopyTable();
+  if (copy_table == nullptr) {
     return;
   }
-  auto* selected = doc->GetSelectedTable();
-  auto& model = doc->GetModel();
+  ITable* selected = doc->GetSelectedTable();
+  IModel& model = doc->GetModel();
 
-  ITable copy = table;
+  ITable copy(*copy_table);
   if (selected != nullptr) {
     copy.ParentId(selected->ApplicationId());
   } else {
@@ -712,17 +811,17 @@ void TablePanel::OnPasteTable(wxCommandEvent& event) {
   copy.ApplicationId(model.FindNextTableId(copy.ParentId()));
   std::string selected_name = copy.ApplicationName();
 
-  const bool exist = model.GetTableByName(table.ApplicationName()) != nullptr;
+  const bool exist = model.GetTableByName(copy_table->ApplicationName()) != nullptr;
   const bool have_sub_tables = !copy.SubTables().empty();
   if (exist && have_sub_tables) {
     std::ostringstream ask;
     ask << "The table already exist in the model. Table: " << copy.ApplicationName() << std::endl;
     ask << "Cannot add as it have sub-table!";
-    const auto ret = wxMessageBox(ask.str(), L"Error Add Table", wxOK | wxCENTRE | wxICON_ERROR, this );
+    wxMessageBox(ask.str(), L"Error Add Table", wxOK | wxCENTRE | wxICON_ERROR, this );
     return;
   }
 
-  if (exist && !have_sub_tables) {
+  if (exist) {
     std::ostringstream ask;
     ask << "The table already exist in the model. Table: " << copy.ApplicationName() << std::endl;
     ask << "Do you want to rename/modify the table?";
@@ -730,7 +829,9 @@ void TablePanel::OnPasteTable(wxCommandEvent& event) {
     if (ret != wxYES) {
       return;
     }
+
     TableDialog dialog(this, model, copy);
+    dialog.SetPosition(wxGetMousePosition());
     const auto ret1 = dialog.ShowModal();
     if (ret1 != wxID_OK) {
       return;
@@ -742,8 +843,7 @@ void TablePanel::OnPasteTable(wxCommandEvent& event) {
   } else {
     model.AddTable(copy);
   }
-  const  ITable empty;
-  app.CopyTable(empty); // Reset the copy table
+  app.CopyTable(nullptr); // Reset the copy table
   RedrawTableList();
   SelectTable(selected_name);
 }

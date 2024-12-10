@@ -252,7 +252,7 @@ void MeasurementTab::FetchTestFromDb() {
   auto& model = app.Model();
 
   // SETUP TEST FILTER
-  const auto* test_table = model.GetBaseId(BaseId::AoTest);
+  const auto* test_table = model.GetTableByBaseId(BaseId::AoTest);
   if (test_table == nullptr || selection_ == nullptr) {
     return;
   }
@@ -298,7 +298,7 @@ void MeasurementTab::FetchFileFromDb(int64_t parent) {
   auto& model = app.Model();
 
   // SETUP TEST FILTER
-  const auto* table = model.GetBaseId(BaseId::AoSubTest);
+  const auto* table = model.GetTableByBaseId(BaseId::AoSubTest);
   if (table == nullptr || parent <= 0 || selection_ == nullptr) {
     return;
   }
@@ -331,7 +331,7 @@ void MeasurementTab::FetchMeasFromDb(int64_t parent) {
   auto& model = app.Model();
 
   // SETUP TEST FILTER
-  const auto* table = model.GetBaseId(BaseId::AoMeasurement);
+  const auto* table = model.GetTableByBaseId(BaseId::AoMeasurement);
   if (table == nullptr || parent <= 0) {
     return;
   }
@@ -431,10 +431,10 @@ void MeasurementTab::FetchChannelFromDb() {
   auto& database = app.Database();
   auto& model = app.Model();
 
-  const auto* file_table = model.GetBaseId(BaseId::AoSubTest);
-  const auto* meas_table = model.GetBaseId(BaseId::AoMeasurement);
-  const auto* channel_table = model.GetBaseId(BaseId::AoMeasurementQuantity);
-  const auto* unit_table = model.GetBaseId(BaseId::AoUnit);
+  const auto* file_table = model.GetTableByBaseId(BaseId::AoSubTest);
+  const auto* meas_table = model.GetTableByBaseId(BaseId::AoMeasurement);
+  const auto* channel_table = model.GetTableByBaseId(BaseId::AoMeasurementQuantity);
+  const auto* unit_table = model.GetTableByBaseId(BaseId::AoUnit);
   if (file_table == nullptr || meas_table == nullptr ||
       channel_table == nullptr || unit_table == nullptr ) {
     return;

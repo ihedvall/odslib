@@ -357,7 +357,7 @@ void AtfxFile::ImportDataRow(const util::xml::IXmlNode &node) {
 
 void AtfxFile::FixUnits() {
   std::unordered_map<int64_t, std::string> unit_list;
-  const auto* unit_table = model_.GetBaseId(BaseId::AoUnit);
+  const auto* unit_table = model_.GetTableByBaseId(BaseId::AoUnit);
   if (unit_table == nullptr) {
     return;
   }

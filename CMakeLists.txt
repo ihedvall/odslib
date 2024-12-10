@@ -4,12 +4,12 @@ cmake_minimum_required(VERSION 3.20)
 project(odslib
         VERSION 1.0
         DESCRIPTION "Interface against ODS databases"
-        LANGUAGES CXX)
+        LANGUAGES C CXX)
 
 option(BUILD_SHARED_LIBS "Static libraries are preferred" OFF)
-option(ODS_DOC "If doxygen is installed, then build documentation in Release mode" OFF)
-option(ODS_TOOLS "If doxygen is installed, then build documentation in Release mode" OFF)
-option(ODS_TEST "If doxygen is installed, then build documentation in Release mode" OFF)
+option(ODS_DOC "Build documentation in Release mode" OFF)
+option(ODS_TOOLS "Build the GUI and executables" OFF)
+option(ODS_TEST "Build the Google unit tests" OFF)
 
 if (NOT COMP_DIR)
     set(COMP_DIR "k:")
@@ -23,11 +23,12 @@ set(CMAKE_DEBUG_POSTFIX d)
 include ("script/utillib.cmake")
 include ("script/mdflib.cmake")
 include ("script/workflowlib.cmake")
+
 include("script/boost.cmake")
-include("script/sqlite3.cmake")
+
 include("script/openssl.cmake")
 include("script/postgresql.cmake")
-
+include("script/openxlsx.cmake")
 
 if (ODS_TOOLS)
     include("script/wxwidgets.cmake")
@@ -65,19 +66,22 @@ add_library(ods
         src/postgresdb.cpp src/postgresdb.h
         src/postgresstatement.cpp src/postgresstatement.h
         src/sysloginserter.cpp src/sysloginserter.h
-        src/odshelper.cpp
-        src/odshelper.h)
+        src/odshelper.cpp src/odshelper.h
+        extern/sqlite/src/sqlite3.h extern/sqlite/src/sqlite3.c
+        extern/sqlite/src/sqlite3ext.h )
 
+#set_source_files_properties(extern/sqlite/sqlite3.c PROPERTIES LANGUAGE CXX)
 
 
 target_include_directories(ods PRIVATE ${Boost_INCLUDE_DIRS})
-target_include_directories(ods PRIVATE ${SQLite3_INCLUDE_DIRS})
+target_include_directories(ods PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/extern/sqlite/src)
 target_include_directories(ods PRIVATE ${PostgreSQL_INCLUDE_DIRS})
 target_include_directories(ods PRIVATE ${utillib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${mdflib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${workflowlib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(ods PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(ods PRIVATE OpenXLSX::OpenXLSX)
 
 target_include_directories(ods PUBLIC
         $<INSTALL_INTERFACE:include>

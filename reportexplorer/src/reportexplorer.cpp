@@ -377,11 +377,11 @@ bool ReportExplorer::AddSelectedChannel(const IItem &item) {
   }
 
   // Fetch name and referenced items from the database and add these properties
-  const auto* meas_table = model_.GetBaseId(BaseId::AoMeasurement);
-  const auto* quantity_table = model_.GetBaseId(BaseId::AoQuantity);
-  const auto* unit_table = model_.GetBaseId(BaseId::AoUnit);
-  const auto* file_table = model_.GetBaseId(BaseId::AoSubTest);
-  const auto* test_table = model_.GetBaseId(BaseId::AoTest);
+  const auto* meas_table = model_.GetTableByBaseId(BaseId::AoMeasurement);
+  const auto* quantity_table = model_.GetTableByBaseId(BaseId::AoQuantity);
+  const auto* unit_table = model_.GetTableByBaseId(BaseId::AoUnit);
+  const auto* file_table = model_.GetTableByBaseId(BaseId::AoSubTest);
+  const auto* test_table = model_.GetTableByBaseId(BaseId::AoTest);
   if (meas_table == nullptr || quantity_table == nullptr ||
       unit_table == nullptr || file_table == nullptr ||
       test_table == nullptr) {

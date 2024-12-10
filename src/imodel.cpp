@@ -104,6 +104,8 @@ void SaveEnum(const ods::IEnum& enum1, IXmlNode &root) {
   }
 }
 
+
+
 void SaveColumn(const ods::IColumn& column, IXmlNode& root) {
   auto& node = root.AddNode("Attribute");
   node.SetAttribute("name", column.ApplicationName());
@@ -218,8 +220,10 @@ bool IModel::operator == (const IModel &model) const {
   const auto table_list = AllTables();
   const auto model_table_list = model.AllTables();
 
+  // Check if any tables added or deleted.
   if (table_list.size() != model_table_list.size() ) return false;
 
+  // Iterate through all tables and check if amy table changed.
   for (const ITable* table : table_list) {
     if (table == nullptr) {
       continue;
@@ -228,14 +232,43 @@ bool IModel::operator == (const IModel &model) const {
     if (model_table == nullptr) {
       return false;
     }
-    if (*table == *model_table) {
-      continue;
+    if (*table != *model_table) {
+      return false;
     }
+  }
+
+  // Test if any enumeration added or deleted.
+  if (enum_list_.size() != model.enum_list_.size() ) {
     return false;
   }
 
-  // if (table_list_ != model.table_list_) return false;
-  if (enum_list_ != model.enum_list_) return false;
+  // Check every enumeration
+  for (const auto& [enum_name, enumeration1] : enum_list_) {
+    const auto *enumeration2 = GetEnum(enum_name);
+    if (enumeration2 == nullptr) {
+      return false;
+    }
+    if (enumeration1 != *enumeration2) {
+      return false;
+    }
+  }
+
+  // Test if any relation added or deleted.
+  if (relation_list_.size() != model.relation_list_.size() ) {
+    return false;
+  }
+
+    // Check every relation
+  for (const auto& [relation_name, relation1] : relation_list_) {
+    const auto* relation2 = GetRelationByName(relation_name);
+    if ( relation2 == nullptr) {
+      return false;
+    }
+    if (relation1 != *relation2) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -343,7 +376,7 @@ bool IModel::ReadModel(const std::string &filename) {
   // A common problem is that the unit and physical dimension tables,
   // not are case-sensitive.
   // Check that the name columns are case-sensitive.
-  ITable* unit_table = GetBaseId(BaseId::AoUnit);
+  ITable* unit_table = GetTableByBaseId(BaseId::AoUnit);
   if (unit_table != nullptr) {
     IColumn* name_column = unit_table->GetColumnByBaseName("name");
     if (name_column != nullptr) {
@@ -351,7 +384,7 @@ bool IModel::ReadModel(const std::string &filename) {
     }
   }
 
-  ITable* dim_table = GetBaseId(BaseId::AoPhysicalDimension);
+  ITable* dim_table = GetTableByBaseId(BaseId::AoPhysicalDimension);
   if (dim_table != nullptr) {
     IColumn* name_column = dim_table->GetColumnByBaseName("name");
     if (name_column != nullptr) {
@@ -380,25 +413,36 @@ bool IModel::ReadModel(const std::string &filename) {
   xml_file->GetChildList(node_list);
 
   // Read in all enumerations first and then the tables
-  for (const auto& node_enum : node_list) {
-    if (!node_enum) {
+  for (const auto* node : node_list) {
+    if (node == nullptr) {
       continue;
     }
-    if (node_enum->IsTagName("Enum") || node_enum->IsTagName("Enumerate")) {
-      ReadEnum(*node_enum);
-    } else if (node_enum->IsTagName("EnumList")) {
+    if (node->IsTagName("Enum") || node->IsTagName("Enumerate")) {
+      ReadEnum(*node);
+    } else if (node->IsTagName("EnumList")) {
        IXmlNode::ChildList enum_list;
-       node_enum->GetChildList(enum_list);
+       node->GetChildList(enum_list);
        for (const auto& node1 : enum_list) {
          if (node1->IsTagName("Enum") || node1->IsTagName("Enumerate")) {
            ReadEnum(*node1);
          }
        }
+    } else if (node->IsTagName("RelationList")) {
+      IXmlNode::ChildList relation_node_list;
+      node->GetChildList(relation_node_list);
+      for (const auto* relation_node : relation_node_list) {
+        if (relation_node == nullptr) {
+          continue;
+        }
+        if (relation_node->IsTagName("Relation") ) {
+          ReadRelation(*relation_node);
+        }
+      }
     }
   }
 
-  for (const auto& node_table : node_list) {
-    if (!node_table) {
+  for (const auto* node_table : node_list) {
+    if (node_table == nullptr) {
       continue;
     }
     if (node_table->IsTagName("Element") || node_table->IsTagName("Table")) {
@@ -435,6 +479,49 @@ void IModel::ReadEnum(const IXmlNode &node) {
      obj.AddItem(item_no, item_text);
   }
   AddEnum(obj);
+}
+
+void IModel::ReadRelation(const IXmlNode &node) {
+  IRelation relation;
+
+  if (node.ExistProperty("Name")) {
+    relation.Name(node.Property<std::string>("Name"));
+  } else {
+    relation.Name(node.Attribute<std::string>("name"));
+  }
+
+  if (node.ExistProperty("ApplicationId1")) {
+    relation.ApplicationId1(node.Property<int>("ApplicationId1"));
+  } else {
+    const auto table_name = node.Attribute<std::string>("table1");
+    const auto* table = GetTableByName(table_name);
+    if (table != nullptr) {
+      relation.ApplicationId1(table->ApplicationId());
+    }
+  }
+  if (node.ExistProperty("ApplicationId2")) {
+    relation.ApplicationId2(node.Property<int>("ApplicationId2"));
+  } else {
+    const auto table_name = node.Attribute<std::string>("table2");
+    const auto* table = GetTableByName(table_name);
+    if (table != nullptr) {
+      relation.ApplicationId2(table->ApplicationId());
+    }
+  }
+  relation.DatabaseName( node.Property<std::string>("DatabaseName") );
+  relation.InverseName( node.Property<std::string>("InverseName") );
+  relation.BaseName( node.Property<std::string>("BaseName") );
+  relation.InverseBaseName( node.Property<std::string>("InverseName") );
+
+  if (relation.Name().empty()) {
+    return;
+  }
+  auto exist = relation_list_.find(relation.Name());
+  if (exist == relation_list_.end()) {
+    relation_list_.emplace(relation.Name(), relation);
+  } else {
+    exist->second = relation;
+  }
 }
 
 
@@ -504,7 +591,7 @@ IEnum *IModel::GetEnum(const std::string& name) {
   return itr == enum_list_.cend() ? nullptr : &itr->second;
 }
 
-const ITable *IModel::GetBaseId(BaseId base) const {
+const ITable *IModel::GetTableByBaseId(BaseId base) const {
     // Search on top level first which is the normal case for this function
   const auto itr1 = std::ranges::find_if(table_list_, [&] (const auto& itr) {
     return itr.second.BaseId() == base;
@@ -522,7 +609,7 @@ const ITable *IModel::GetBaseId(BaseId base) const {
   return nullptr;
 }
 
-ITable *IModel::GetBaseId(BaseId base) {
+ITable *IModel::GetTableByBaseId(BaseId base) {
   // Search on top level first which is the normal case for this function
   auto itr1 = std::ranges::find_if(table_list_, [&] (const auto& itr) -> bool {
     return itr.second.BaseId() == base;
@@ -707,6 +794,14 @@ bool IModel::SaveModel(const std::string &filename) const {
     }
     SaveTable(*table, root);
   }
+
+  if (!relation_list_.empty()) {
+    auto &relation_root = root.AddNode("RelationList");
+    for (const auto &[relation_name, relation]: relation_list_) {
+      SaveRelation(relation, relation_root);
+    }
+  }
+
   return xml_file->WriteFile();
 }
 
@@ -726,6 +821,50 @@ int64_t IModel::FindNextEnumId() const {
   return 0;
 }
 
+void IModel::AddRelation(const IRelation& relation) {
+  if (relation.Name().empty()) {
+    return;
+  }
 
+  if (auto itr = relation_list_.find(relation.Name()); itr != relation_list_.end()) {
+    itr->second = relation;
+  } else {
+    relation_list_.emplace(relation.Name(), relation );
+  }
+}
+
+void IModel::DeleteRelation(const std::string &name) {
+  if ( auto itr = relation_list_.find(name); itr != relation_list_.end()) {
+    relation_list_.erase( itr );
+  }
+}
+
+const IRelation *IModel::GetRelationByName(const std::string &name) const {
+  const auto itr = relation_list_.find(name);
+  return itr != relation_list_.cend() ? &itr->second : nullptr;
+}
+
+
+void IModel::SaveRelation(const IRelation& relation, IXmlNode &root) const {
+  auto& node = root.AddNode("Relation");
+  node.SetAttribute("name",relation.Name());
+
+  const auto* table1 = GetTable(relation.ApplicationId1());
+  if (table1 != nullptr) {
+    node.SetAttribute("table1",table1->ApplicationName() );
+  }
+
+  const auto* table2 = GetTable(relation.ApplicationId2());
+  if (table2 != nullptr) {
+    node.SetAttribute("table2",table2->ApplicationName() );
+  }
+  node.SetProperty("Name", relation.Name() );
+  node.SetProperty("ApplicationId1", relation.ApplicationId1() );
+  node.SetProperty("ApplicationId2", relation.ApplicationId2() );
+  node.SetProperty("DatabaseName", relation.DatabaseName() );
+  node.SetProperty("InverseName", relation.InverseName() );
+  node.SetProperty("BaseName", relation.BaseName() );
+  node.SetProperty("InverseBaseName", relation.InverseBaseName() );
+}
 
 } // end namespace

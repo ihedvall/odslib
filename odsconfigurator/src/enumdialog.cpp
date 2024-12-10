@@ -140,7 +140,7 @@ void EnumDialog::OnItemSelect(wxUpdateUIEvent &event) {
     event.Enable(item_list_->GetSelectedItemCount() >  0);
   }
 }
-void EnumDialog::OnItemAdd(wxCommandEvent &event) {
+void EnumDialog::OnItemAdd(wxCommandEvent & ) {
 
   EnumItemDialog dialog(this);
   dialog.key_ = enumerate_.GetNextKey();
@@ -175,7 +175,7 @@ void EnumDialog::OnItemEdit(wxCommandEvent &) {
   RedrawItemList();
 }
 
-void EnumDialog::OnItemDelete(wxCommandEvent &event) {
+void EnumDialog::OnItemDelete(wxCommandEvent &) {
   if (item_list_ == nullptr) {
     return;
   }
@@ -209,7 +209,7 @@ void EnumDialog::OnItemDelete(wxCommandEvent &event) {
   RedrawItemList();
 }
 
-void EnumDialog::OnItemDoubleClick(wxListEvent &event) {
+void EnumDialog::OnItemDoubleClick(wxListEvent &) {
   wxCommandEvent dummy;
   OnItemEdit(dummy);
 }
@@ -218,7 +218,6 @@ bool EnumDialog::GetSelectedItem(int64_t& key, std::string& value) const {
   if (item_list_ == nullptr) {
     return false;
   }
-  const auto& item_list = enumerate_.Items();
   const auto item = item_list_->GetFirstSelected();
   if (item < 0 || item_list_->GetSelectedItemCount() > 1) {
     return false;

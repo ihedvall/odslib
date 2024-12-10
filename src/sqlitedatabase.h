@@ -6,7 +6,7 @@
 
 #include <string>
 #include <functional>
-#include <sqlite3.h>
+#include "sqlite3.h"
 #include <util/utilfactory.h>
 #include "ods/idatabase.h"
 #include "ods/imodel.h"
@@ -34,6 +34,9 @@ class SqliteDatabase : public IDatabase {
 
   [[nodiscard]] bool Create(const IModel& model) override;
 
+  void Insert(const ITable& table, IItem& row, const SqlFilter& filter) override;
+  void Update(const ITable& table, IItem& row, const SqlFilter& filter) override;
+
   int64_t ExecuteSql(const std::string& sql) override;
 
   void FetchNameMap(const ITable& table, IdNameMap &dest_list,
@@ -50,6 +53,8 @@ class SqliteDatabase : public IDatabase {
 protected:
    [[nodiscard]] std::string DataTypeToDbString(DataType type) override;
    [[nodiscard]] bool IsDataTypeString(DataType type) override;
+
+  void InsertDumpRow(const ITable &table, IItem &row) override;
 
  private:
 

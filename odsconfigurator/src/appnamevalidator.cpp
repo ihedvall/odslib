@@ -8,7 +8,7 @@
 namespace ods::gui {
 
 AppNameValidator::AppNameValidator(wxString *value) :
-    wxTextValidator(wxFILTER_ALPHANUMERIC | wxFILTER_EMPTY, value) {
+    wxTextValidator(wxFILTER_ALPHANUMERIC | wxFILTER_SPACE, value) {
   SetCharIncludes("_");
 }
 

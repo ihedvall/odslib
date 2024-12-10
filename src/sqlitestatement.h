@@ -8,6 +8,7 @@
 #include <sstream>
 #include "ods/icolumn.h"
 #include "sqlitedatabase.h"
+#include "odshelper.h"
 
 namespace ods::detail {
 
@@ -42,6 +43,7 @@ class SqliteStatement final {
  private:
   sqlite3*  database_ = nullptr;
   sqlite3_stmt* statement_ = nullptr;
+  std::string sql_;
 };
 
 template<typename T>
@@ -70,17 +72,36 @@ void SqliteStatement::GetValue(int column, T& value) const {
     }
 
     case SQLITE_TEXT: {
-      const auto* temp = sqlite3_column_text(statement_, column);
-      const auto bytes = sqlite3_column_bytes(statement_,column);
+      const unsigned char* temp = sqlite3_column_text(statement_, column);
+      const int bytes = sqlite3_column_bytes(statement_,column);
+      if (bytes <= 0 || temp == nullptr) {
+        value = {};
+        break;
+      }
       std::stringstream val;
-      for (int byte = 0; temp != nullptr && byte < bytes; ++byte) {
+      for (int byte = 0; byte < bytes; ++byte) {
         val << static_cast<char>(temp[byte]);
       }
       val >> value;
       break;
     }
 
-    case SQLITE_BLOB:
+    case SQLITE_BLOB: {
+      const void* blob_data = sqlite3_column_blob(statement_, column);
+      const int nof_bytes = sqlite3_column_bytes(statement_,column);
+      if (nof_bytes <= 0 || blob_data == nullptr) {
+        value = {};
+        break;
+      }
+      std::vector<uint8_t> byte_array(nof_bytes, 0);
+      for (int index = 0; index < byte_array.size(); ++index) {
+        byte_array[index] = *(static_cast<const uint8_t*>(blob_data) + index);
+      }
+      std::istringstream val(OdsHelper::ToBase64(byte_array));
+      val >> value;
+      break;
+    }
+
     case SQLITE_NULL:
     default:
       value = {};

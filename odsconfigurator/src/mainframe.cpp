@@ -18,6 +18,7 @@
 #include "postgresdialog.h"
 
 using namespace util::log;
+using namespace std::filesystem;
 
 namespace ods::gui {
 
@@ -44,6 +45,10 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxDocMDIParentFrame) // NOLINT
   EVT_UPDATE_UI(kIdEditEnumItem, MainFrame::OnUpdateNoDoc)
   EVT_UPDATE_UI(kIdDeleteEnumItem, MainFrame::OnUpdateNoDoc)
 
+  EVT_UPDATE_UI(kIdAddRelation, MainFrame::OnUpdateNoDoc)
+  EVT_UPDATE_UI(kIdEditRelation, MainFrame::OnUpdateNoDoc)
+  EVT_UPDATE_UI(kIdDeleteRelation, MainFrame::OnUpdateNoDoc)
+
   EVT_MENU(kIdImportFile, MainFrame::OnImportAtfx)
   EVT_MENU(kIdImportSqlite, MainFrame::OnImportSqlite)
   EVT_MENU(kIdImportPostgres, MainFrame::OnImportPostgres)
@@ -52,6 +57,8 @@ wxBEGIN_EVENT_TABLE(MainFrame, wxDocMDIParentFrame) // NOLINT
   EVT_UPDATE_UI(kIdCreateDbPostgres, MainFrame::OnUpdateAnyDoc)
   EVT_MENU(kIdCreateDbSqlite, MainFrame::OnCreateDbSqlite)
   EVT_MENU(kIdCreateDbPostgres, MainFrame::OnCreateDbPostgres)
+
+  EVT_DROP_FILES(MainFrame::OnDropFiles)
 wxEND_EVENT_TABLE()
 
 MainFrame::MainFrame(const wxString& title, const wxPoint& start_pos, const wxSize& start_size, bool maximized)
@@ -114,6 +121,12 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& start_pos, const wxSi
   menu_item->Append(kIdEditEnumItem, wxGetStockLabel(wxID_EDIT));
   menu_item->Append(kIdDeleteEnumItem, wxGetStockLabel(wxID_DELETE));
 
+  // RELATION
+  auto *menu_relation = new wxMenu;
+  menu_enum->Append(kIdAddRelation,wxGetStockLabel(wxID_ADD));
+  menu_enum->Append(kIdEditRelation, wxGetStockLabel(wxID_EDIT));
+  menu_enum->Append(kIdDeleteRelation, wxGetStockLabel(wxID_DELETE));
+
   // ABOUT
   auto *menu_about = new wxMenu;
   menu_about->Append(kIdOpenLogFile, L"Open Log File");
@@ -126,6 +139,7 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& start_pos, const wxSi
   menu_bar->Append(menu_column, L"Column");
   menu_bar->Append(menu_enum, L"Enumerate");
   menu_bar->Append(menu_item, L"Enumerate Item");
+  menu_bar->Append(menu_relation, L"Many-to-Many Relation");
   menu_bar->Append(menu_about, wxGetStockLabel(wxID_HELP));
   wxFrameBase::SetMenuBar(menu_bar);
 }
@@ -437,6 +451,45 @@ void MainFrame::OnCreateDbPostgres(wxCommandEvent &event) {
     return;
   }
   document->UpdateAllViews();
+}
+
+void MainFrame::OnDropFiles(wxDropFilesEvent &event) {
+  const int nof_files = event.GetNumberOfFiles();
+  const wxString* file_list = event.GetFiles();
+  wxDocManager* doc_manager = wxDocManager::GetDocumentManager();
+  if (nof_files <= 0 || file_list == nullptr || doc_manager == nullptr)  {
+    return;
+  }
+
+  for (int index = 0; index < nof_files; ++index) {
+    try {
+      const wxString& file = file_list[index];
+      const path filename(file.ToStdWstring());
+      if (!exists(filename)) {
+        continue;
+      }
+      // Check that the file is a model file.
+      // A simple solution is to read in the model.
+      IModel model;
+      const bool read = model.ReadModel(filename.string());
+      if (!read || model.IsEmpty()) {
+        continue;
+      }
+
+      // Check if the file already is open
+      const auto* doc_exist = doc_manager->FindDocumentByPath(file);
+      if (doc_exist != nullptr) {
+        continue;
+      }
+
+      doc_manager->CreateDocument(file, wxDOC_SILENT);
+    }
+    catch (const std::exception& err) {
+      LOG_ERROR() << "Drag & Drop failure. Error: " << err.what();
+      continue;
+    }
+  }
+
 }
 
 }

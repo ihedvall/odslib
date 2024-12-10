@@ -109,7 +109,7 @@ void IDatabase::Delete(const ITable &table, const SqlFilter& filter) {
 }
 
 bool IDatabase::InsertModelUnits(const IModel &model) {
-  const auto* unit_table = model.GetBaseId(BaseId::AoUnit);
+  const auto* unit_table = model.GetTableByBaseId(BaseId::AoUnit);
   if (unit_table == nullptr) {
     LOG_DEBUG() << "No unit table in DB. Assume no model units";
     return true;
@@ -161,7 +161,7 @@ bool IDatabase::InsertModelUnits(const IModel &model) {
 
 bool IDatabase::FixUnitStrings(const IModel &model) {
   try {
-    const auto* unit_table = model.GetBaseId(BaseId::AoUnit);
+    const auto* unit_table = model.GetTableByBaseId(BaseId::AoUnit);
     if (unit_table == nullptr) {
       return true;
     }
@@ -215,11 +215,7 @@ std::string IDatabase::MakeDateValue(const IAttribute &attr) const {
   if (attr.IsValueUnsigned()) {
     const auto ns1970 = attr.Value<uint64_t>();
     int format = 0;
-    if (ns1970 % 1'000 != 0) {
-      format = 3;
-    } else if (ns1970 % 1'000'000 != 0) {
-      format = 2;
-    } else if (ns1970 % 1'000'000'000 != 0) {
+    if (ns1970 % 1'000'000'000 != 0) {
       format = 1;
     }
     temp = util::time::NsToIsoTime(ns1970,format);
@@ -229,7 +225,7 @@ std::string IDatabase::MakeDateValue(const IAttribute &attr) const {
     temp = attr.Value<std::string>();
     if (IEquals(temp,"CURRENT_", 8)) {
       const auto now = TimeStampToNs();
-      temp = NsToIsoTime(now, 0);
+      temp = NsToIsoTime(now, 1);
     }
   }
   std::ostringstream temp_dotted;
@@ -610,7 +606,7 @@ std::string IDatabase::MakeCreateTableSql(const ods::IModel& model,
 }
 
 bool IDatabase::InsertModelEnvironment(const IModel &model) {
-  const auto* env_table = model.GetBaseId(BaseId::AoEnvironment);
+  const auto* env_table = model.GetTableByBaseId(BaseId::AoEnvironment);
   if (env_table == nullptr) {
     LOG_DEBUG() << "No environment table in DB. Assume no environment";
     return true;
@@ -685,7 +681,7 @@ bool IDatabase::ReadModel(IModel &model) {
   // A common problem is that the unit and physical dimension tables,
   // not are case-sensitive.
   // Check that the name columns are case-sensitive.
-  ITable* unit_table = model.GetBaseId(BaseId::AoUnit);
+  ITable* unit_table = model.GetTableByBaseId(BaseId::AoUnit);
   if (unit_table != nullptr) {
     IColumn* name_column = unit_table->GetColumnByBaseName("name");
     if (name_column != nullptr) {
@@ -693,7 +689,7 @@ bool IDatabase::ReadModel(IModel &model) {
     }
   }
 
-  ITable* dim_table = model.GetBaseId(BaseId::AoPhysicalDimension);
+  ITable* dim_table = model.GetTableByBaseId(BaseId::AoPhysicalDimension);
   if (dim_table != nullptr) {
     IColumn* name_column = dim_table->GetColumnByBaseName("name");
     if (name_column != nullptr) {
@@ -1108,7 +1104,6 @@ bool IDatabase::DumpTable(const std::string &dump_dir, const ITable &table) {
 }
 
 bool IDatabase::DumpRow(const ITable &table, const IItem &row, std::ofstream &out_file) const {
-  // Todo: Assumes that the model and the actual database match
 
   bool dump_row = true;
   for (const auto& attribute : row.AttributeList()) {
@@ -1120,6 +1115,7 @@ bool IDatabase::DumpRow(const ITable &table, const IItem &row, std::ofstream &ou
       dump_row = false;
       continue;
     }
+
     if (attribute.IsValueEmpty() && !column->Obligatory() && !column->Unique()) {
       // This is a null value in a database.
       out_file << "~NULL~";
@@ -1166,7 +1162,20 @@ bool IDatabase::DumpRow(const ITable &table, const IItem &row, std::ofstream &ou
         break;
       }
 
-      case DataType::DtDate: // Todo: Proper handling of DtDate
+      case DataType::DtDate: {
+        const uint64_t ns1970 = IsoTimeToNs(attribute.Value<std::string>(), false);
+        int format = 0;
+        if (ns1970 % 1'000 != 0) {
+          format = 3;
+        } else if (ns1970 % 1'000'000 != 0) {
+          format = 2;
+        } else if (ns1970 % 1'000'000'000 != 0) {
+          format = 1;
+        }
+        out_file << NsToIsoTime(ns1970, format);
+        break;
+      }
+
       case DataType::DtExternalRef:
       case DataType::DtString:
       case DataType::DtId:

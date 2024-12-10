@@ -4,23 +4,24 @@
  */
 #include <string>
 #include <algorithm>
-#include <boost/beast/core/detail/base64.hpp>
-#include <util/stringutil.h>
+#include <utility>
+#include <charconv>
+
 #include "ods/iattribute.h"
 
-using namespace util::string;
-using namespace boost::beast::detail;
+#include "odshelper.h"
+
 namespace ods {
 
-IAttribute::IAttribute(const std::string &name, const char* value)
-: name_(name),
-  value_(std::string(value != nullptr ? value : "")) {
+IAttribute::IAttribute(std::string name, const char* value)
+: name_(std::move(name)),
+  value_(value != nullptr ? value : "") {
 }
 
-IAttribute::IAttribute(const std::string &name, const std::string& base_name, const char* value)
-: name_(name),
-  base_name_(base_name),
-  value_(std::string(value != nullptr ? value : "")) {
+IAttribute::IAttribute(std::string name, std::string  base_name, const char* value)
+: name_(std::move(name)),
+  base_name_(std::move(base_name)),
+  value_(value != nullptr ? value : "") {
 }
 
 const std::string &IAttribute::BaseName() const {
@@ -41,18 +42,19 @@ bool IAttribute::IsValueUnsigned() const {
   if (value_.empty()) {
     return false;
   }
-  return std::ranges::all_of(value_, [&] (const auto& input) {
+  // Must be all number
+  return std::ranges::all_of(value_, [&] (const char& input) ->bool {
     return ::isdigit(input);
   });
 }
 
 template<>
-std::string IAttribute::Value<std::string>() const {
+std::string IAttribute::Value() const {
   return value_;
 }
 
 template <>
-[[nodiscard]] bool IAttribute::Value<bool>() const {
+[[nodiscard]] bool IAttribute::Value() const {
   if (value_.empty()) {
     return false;
   }
@@ -70,50 +72,62 @@ template <>
 }
 
 template<>
-std::vector<uint8_t> IAttribute::Value<std::vector<uint8_t>>() const {
-  std::vector<uint8_t> temp;
+std::vector<uint8_t> IAttribute::Value() const {
+  return OdsHelper::FromBase64(value_);
+}
+
+template<>
+float IAttribute::Value() const {
   if (value_.empty()) {
-    return std::move(temp);
+    return 0.0F;
   }
+  float value = 0.0F;
+  std::from_chars(value_.data(), value_.data() + value_.size(), value);
+  return value;
+}
 
-  const auto dest_size = base64::decoded_size(value_.size());
-  temp.resize(dest_size,0);
-  const auto size_pair = base64::decode(temp.data(), value_.c_str(), dest_size);
-  if (dest_size > size_pair.first) {
-    temp.resize(size_pair.first);
+template<>
+double IAttribute::Value() const {
+  if (value_.empty()) {
+    return 0.0;
   }
-  return std::move(temp);
+  double value = 0.0;
+  std::from_chars(value_.data(), value_.data() + value_.size(), value);
+  return value;
 }
 
 template <>
-void IAttribute::Value<std::string>(const std::string& value) {
-  value_ = value;
+void IAttribute::Value(std::string value) {
+  value_ = std::move(value);
 }
 
 template <>
-void IAttribute::Value<double>(const double& value) {
-  value_ = DoubleToString(value);;
+void IAttribute::Value(double value) {
+  char temp[80] = {'\0'};
+  std::to_chars(temp, temp + 78, value );
+  value_ = temp;
 }
 
 template <>
-void IAttribute::Value<float>(const float& value) {
-  value_ = FloatToString(value);;
+void IAttribute::Value(float value) {
+  char temp[80] = {'\0'};
+  std::to_chars(temp, temp + 78, value );
+  value_ = temp;
 }
 
 template <>
-void IAttribute::Value<bool>(const bool& value) {
+void IAttribute::Value(bool value) {
   value_ = value ? "1" : "0";
 }
 
 template <>
-void IAttribute::Value<std::vector<uint8_t>>(const std::vector<uint8_t>& value) {
-  if (value.empty()) {
-    value_.clear();
-    return;
-  }
-  const auto dest_size = base64::encoded_size(value.size());
-  value_.resize(dest_size,'\0');
-  base64::encode(value_.data(), value.data(), value.size());
+void IAttribute::Value(std::vector<uint8_t> value) {
+  const auto temp = std::move(value);
+  value_ = OdsHelper::ToBase64(temp);
 }
 
+template <>
+void IAttribute::Value(const char* value) {
+  value_ = value != nullptr ? value : "";
+}
 } // end namespace

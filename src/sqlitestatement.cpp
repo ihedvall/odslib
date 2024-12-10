@@ -4,7 +4,6 @@
  */
 #include <string>
 #include <sstream>
-#include <iomanip>
 #include <sqlite3.h>
 #include <util/stringutil.h>
 #include "sqlitestatement.h"
@@ -13,7 +12,8 @@ using namespace util::string;
 namespace ods::detail {
 
 SqliteStatement::SqliteStatement(sqlite3 *database, const std::string &sql)
-: database_(database) {
+: database_(database),
+  sql_(sql) {
   if (database_ != nullptr) {
     const char* tail = nullptr;
     const auto stmt = sqlite3_prepare_v2(database_, sql.c_str(),
@@ -48,7 +48,9 @@ bool SqliteStatement::Step() {
 
     default: {
       std::ostringstream error;
-      error << "Step statement failed. Error: " << sqlite3_errstr(step);
+
+      error << "Step statement failed. Error: " << sqlite3_errstr(step)
+        << ", SQL: " << sql_;
       throw std::runtime_error(error.str());
     }
   }
@@ -99,7 +101,7 @@ void SqliteStatement::SetValue(int index, const std::string &value) const {
   if (statement_ == nullptr) {
     throw std::runtime_error("Statement is null");
   }
-  const auto bind = value.empty() ?
+  const auto bind = IEquals(value, "NULL") ?
     sqlite3_bind_null(statement_, index) :
     sqlite3_bind_text(statement_, index, value.c_str(),-1, SQLITE_TRANSIENT);
   if (bind != SQLITE_OK) {
@@ -108,9 +110,19 @@ void SqliteStatement::SetValue(int index, const std::string &value) const {
     throw std::runtime_error(error.str());
   }
 }
+
 void SqliteStatement::SetValue(int index, const char *value) const {
-  const std::string temp(value == nullptr ? "" : value);
-  SetValue(index, temp);
+  if (statement_ == nullptr) {
+    throw std::runtime_error("Statement is null");
+  }
+  const auto bind = value == nullptr || IEquals(value, "NULL") ?
+                    sqlite3_bind_null(statement_, index) :
+                    sqlite3_bind_text(statement_, index, value,-1, SQLITE_TRANSIENT);
+  if (bind != SQLITE_OK) {
+    std::ostringstream error;
+    error << "Bind (TEXT) statement failed. Error: " << sqlite3_errstr(bind);
+    throw std::runtime_error(error.str());
+  }
 }
 
 void SqliteStatement::SetValue(int index, const std::vector<uint8_t> &value) const {
@@ -173,47 +185,49 @@ void SqliteStatement::GetValue(int column, std::string& value) const {
 
   switch (type) {
     case SQLITE_INTEGER: {
-      const auto temp = sqlite3_column_int64(statement_, column);
+      const int64_t temp = sqlite3_column_int64(statement_, column);
       value = std::to_string(temp);
       break;
     }
 
     case SQLITE_FLOAT: {
-      const auto temp = sqlite3_column_double(statement_, column);
+      const double temp = sqlite3_column_double(statement_, column);
       value = std::to_string(temp);
       break;
     }
 
     case SQLITE_TEXT: {
-      const auto* temp = sqlite3_column_text(statement_, column);
-      const auto bytes = sqlite3_column_bytes(statement_,column);
+      const unsigned char* temp = sqlite3_column_text(statement_, column);
+      const int bytes = sqlite3_column_bytes(statement_,column);
+      if (bytes <= 0 || temp == nullptr) {
+        value.clear();
+        break;
+      }
+      value.resize(bytes,'\0');
       std::ostringstream val;
-      for (int byte = 0; temp != nullptr && byte < bytes; ++byte) {
+      for (int byte = 0; byte < value.size(); ++byte) {
+
         const char in_char =  static_cast<char>(temp[byte]);
         if (in_char == '\0') {
           break;
         }
-        val << in_char;
-      }
-      value = val.str();
-      break;
+        value[byte] = in_char;
+     }
+     break;
     }
 
     case SQLITE_BLOB: {
-      const auto* temp = sqlite3_column_blob(statement_, column);
-      const auto bytes = sqlite3_column_bytes(statement_,column);
-      std::ostringstream val;
-
-      for (int byte = 0; temp != nullptr && byte < bytes; ++byte) {
-        const auto* list = static_cast<const uint8_t*>(temp);
-        val << std::setw(2) << std::setfill('0')
-            << std::hex << static_cast<int>(list[byte]);
-        if (byte > 30) {
-          val << "...";
-          break;
-        }
+      const void* temp = sqlite3_column_blob(statement_, column);
+      const int bytes = sqlite3_column_bytes(statement_,column);
+      if (bytes <= 0 || temp == nullptr) {
+        value.clear();
+        break;
       }
-      value = val.str();
+      std::vector<uint8_t> byte_array(bytes, 0);
+      for (size_t byte = 0; byte < byte_array.size(); ++byte) {
+        byte_array[byte] = *(static_cast<const uint8_t*>(temp) + byte);
+      }
+      value = OdsHelper::ToBase64(byte_array);
       break;
     }
 
@@ -234,7 +248,7 @@ void SqliteStatement::GetValue(int column, std::vector<uint8_t>& value) const {
     value.clear();
     return;
   }
-  const auto type = sqlite3_column_type(statement_, column);
+  const int type = sqlite3_column_type(statement_, column);
 
   switch (type) {
 
@@ -244,6 +258,8 @@ void SqliteStatement::GetValue(int column, std::vector<uint8_t>& value) const {
       if (bytes > 0 ) {
         value.resize(bytes, 0);
         memcpy(value.data(), temp, bytes);
+      } else {
+        value.clear();
       }
       break;
     }
@@ -254,6 +270,8 @@ void SqliteStatement::GetValue(int column, std::vector<uint8_t>& value) const {
       if (bytes > 0 ) {
         value.resize(bytes, 0);
         memcpy(value.data(), temp, bytes);
+      } else {
+        value.clear();
       }
       break;
     }

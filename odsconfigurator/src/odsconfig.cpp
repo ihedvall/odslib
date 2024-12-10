@@ -41,7 +41,7 @@ bool OdsConfig::OnInit() {
 
   // Setup system basic configuration
   SetVendorDisplayName("ODS Configurator");
-  SetVendorName("ReportServer");
+  SetVendorName("IH Development");
   SetAppName("OdsConfig");
   SetAppDisplayName("ODS Configurator");
 
@@ -49,14 +49,13 @@ bool OdsConfig::OnInit() {
   // The log file will be in %TEMP%/report_server/mdf_viewer.log
   auto& log_config = LogConfig::Instance();
   log_config.Type(LogType::LogToFile);
-  log_config.SubDir("report_server/log");
-  log_config.BaseName("ods_config");
+  log_config.SubDir("ih_develop/log"); // <Program Data>/ih_develop/log/<log files>
+  log_config.BaseName("ods_config"); // Logfile stem name
   log_config.CreateDefaultLogger();
   LOG_DEBUG() << "Log File created. Path: " << log_config.GetLogFile();
 
-
-
-  // Find the path to the 'notepad.exe'
+  // Find the path to the 'notepad.exe' that is used for
+  // showing log file contents
   notepad_ = util::log::FindNotepad();
 
   auto* app_config = wxConfig::Get();
@@ -98,7 +97,6 @@ void OdsConfig::OnOpenLogFile(wxCommandEvent& event) {
   auto& log_config = LogConfig::Instance();
   std::string logfile = log_config.GetLogFile();
   OpenFile(logfile);
-
 }
 
 void OdsConfig::OnUpdateOpenLogFile(wxUpdateUIEvent &event) {
@@ -121,6 +119,17 @@ void OdsConfig::OnUpdateOpenLogFile(wxUpdateUIEvent &event) {
 void OdsConfig::OpenFile(const std::string& filename) const {
   if (!notepad_.empty()) {
     boost::process::spawn(notepad_, filename);
+  }
+}
+
+const ITable *OdsConfig::CopyTable() const {
+  return copy_table_.get();
+}
+
+void OdsConfig::CopyTable(const ITable *table) {
+  copy_table_.reset();
+  if (table != nullptr) {
+    copy_table_ = std::make_unique<ITable>(*table);
   }
 }
 

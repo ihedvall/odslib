@@ -11,12 +11,14 @@
 #include "tablepanel.h"
 #include "enumpanel.h"
 #include "tabledialog.h"
+#include "relationpanel.h"
 namespace {
 
 // Defines the page number in the notebook.
 constexpr int kCommonPanel = 0;
 constexpr int kTablePanel = 1;
 constexpr int kEnumPanel = 2;
+constexpr int kRelationPanel = 3;
 
 } // Empty namespace
 
@@ -47,6 +49,7 @@ wxBEGIN_EVENT_TABLE(ChildFrame, wxDocMDIChildFrame) // NOLINT(cert-err58-cpp)
   EVT_UPDATE_UI(kIdAddEnum, ChildFrame::OnUpdateEnum)
   EVT_UPDATE_UI(kIdEditEnum, ChildFrame::OnUpdateSingleEnumSelected)
   EVT_UPDATE_UI(kIdDeleteEnum, ChildFrame::OnUpdateEnumSelected)
+
   EVT_MENU(kIdAddEnum, ChildFrame::OnAddEnum)
   EVT_MENU(kIdEditEnum, ChildFrame::OnEditEnum)
   EVT_MENU(kIdDeleteEnum, ChildFrame::OnDeleteEnum)
@@ -54,9 +57,18 @@ wxBEGIN_EVENT_TABLE(ChildFrame, wxDocMDIChildFrame) // NOLINT(cert-err58-cpp)
   EVT_UPDATE_UI(kIdAddEnumItem, ChildFrame::OnUpdateSingleEnumSelected)
   EVT_UPDATE_UI(kIdEditEnumItem, ChildFrame::OnUpdateSingleEnumItemSelected)
   EVT_UPDATE_UI(kIdDeleteEnumItem, ChildFrame::OnUpdateEnumItemSelected)
+
   EVT_MENU(kIdAddEnumItem, ChildFrame::OnAddEnumItem)
   EVT_MENU(kIdEditEnumItem, ChildFrame::OnEditEnumItem)
   EVT_MENU(kIdDeleteEnumItem, ChildFrame::OnDeleteEnumItem)
+
+  EVT_UPDATE_UI(kIdAddRelation, ChildFrame::OnUpdateRelation)
+  EVT_UPDATE_UI(kIdEditRelation, ChildFrame::OnUpdateSingleRelationSelected)
+  EVT_UPDATE_UI(kIdDeleteRelation, ChildFrame::OnUpdateRelationSelected)
+
+  EVT_MENU(kIdAddRelation, ChildFrame::OnAddRelation)
+  EVT_MENU(kIdEditRelation, ChildFrame::OnEditRelation)
+  EVT_MENU(kIdDeleteRelation, ChildFrame::OnDeleteRelation)
 
 wxEND_EVENT_TABLE()
 
@@ -77,10 +89,12 @@ ChildFrame::ChildFrame(wxDocument *doc,
   auto *common = new CommonPanel(notebook_);
   auto *config = new TablePanel(notebook_);
   auto *enumerate = new EnumPanel(notebook_);
-  //auto* relation = new CommonPanel(notebook_);
+  auto *relation = new RelationPanel(notebook_);
+
   notebook_->AddPage(common, L"General", false, 4);
   notebook_->AddPage(config, L"Database Design", false, 5);
   notebook_->AddPage(enumerate, L"Enumerations", false, 6);
+  notebook_->AddPage(relation, L"Many-to-Many Relations", false, 7);
 
   auto *save_button = new wxButton(this, wxID_SAVE, wxGetStockLabel(wxID_SAVE, wxSTOCK_FOR_BUTTON));
   auto *save_as_button = new wxButton(this, wxID_SAVEAS, wxGetStockLabel(wxID_SAVEAS, wxSTOCK_FOR_BUTTON));
@@ -214,6 +228,7 @@ void ChildFrame::OnAddTable(wxCommandEvent &event) {
   empty.ApplicationId(model.FindNextTableId(empty.ParentId()));
 
   TableDialog dialog(this, model, empty);
+  dialog.SetPosition(wxGetMousePosition());
   const auto ret = dialog.ShowModal();
   if (ret != wxID_OK) {
     return;
@@ -240,6 +255,7 @@ void ChildFrame::OnEditTable(wxCommandEvent &event) {
   }
 
   TableDialog dialog(this, doc->GetModel(), *selected);
+  dialog.SetPosition(wxGetMousePosition());
   const auto ret = dialog.ShowModal();
   if (ret != wxID_OK) {
     return;
@@ -505,6 +521,86 @@ void ChildFrame::OnDeleteEnumItem(wxCommandEvent &event) {
   return enum_panel->OnDeleteEnumItem(event);
 }
 
+
+void ChildFrame::OnUpdateRelation(wxUpdateUIEvent &event) {
+  if (notebook_ == nullptr) {
+    event.Enable(false);
+    return;
+  }
+  event.Enable(notebook_->GetSelection() == kRelationPanel);
+}
+
+void ChildFrame::OnUpdateSingleRelationSelected(wxUpdateUIEvent &event) {
+  if (notebook_ == nullptr) {
+    event.Enable(false);
+    return;
+  }
+  if (notebook_->GetSelection() != kRelationPanel) {
+    event.Enable(false);
+    return;
+  }
+
+  auto* relation_panel = dynamic_cast<RelationPanel*>(notebook_->GetCurrentPage());
+  if (relation_panel == nullptr) {
+    event.Enable(false);
+    return;
+  }
+  return relation_panel->OnUpdateSingleRelationSelected(event);
+}
+
+void ChildFrame::OnUpdateRelationSelected(wxUpdateUIEvent &event) {
+  if (notebook_ == nullptr) {
+    event.Enable(false);
+    return;
+  }
+  if (notebook_->GetSelection() != kRelationPanel) {
+    event.Enable(false);
+    return;
+  }
+
+  auto* relation_panel = dynamic_cast<RelationPanel*>(notebook_->GetCurrentPage());
+  if (relation_panel == nullptr) {
+    event.Enable(false);
+    return;
+  }
+  return relation_panel->OnUpdateRelationSelected(event);
+}
+
+void ChildFrame::OnAddRelation(wxCommandEvent &event) {
+  if (notebook_ == nullptr) {
+    return;
+  }
+
+  auto* relation_panel = dynamic_cast<RelationPanel*>(notebook_->GetCurrentPage());
+  if (relation_panel == nullptr) {
+    return;
+  }
+  return relation_panel->OnAddRelation(event);
+}
+
+void ChildFrame::OnEditRelation(wxCommandEvent &event) {
+  if (notebook_ == nullptr) {
+    return;
+  }
+
+  auto* relation_panel = dynamic_cast<RelationPanel*>(notebook_->GetCurrentPage());
+  if (relation_panel == nullptr) {
+    return;
+  }
+  return relation_panel->OnEditRelation(event);
+}
+
+void ChildFrame::OnDeleteRelation(wxCommandEvent &event) {
+  if (notebook_ == nullptr) {
+    return;
+  }
+
+  auto* relation_panel = dynamic_cast<RelationPanel*>(notebook_->GetCurrentPage());
+  if (relation_panel == nullptr) {
+    return;
+  }
+  return relation_panel->OnDeleteRelation(event);
+}
 
 } // end namespace
 

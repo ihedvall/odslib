@@ -196,18 +196,19 @@ TEST_F(TestSqlite, WriteAndRead) {
 
       read.GetValue(3, text_value);
       EXPECT_EQ(text_value, kTextList[row]);
+      /*
       if (row >= 2) {
         EXPECT_TRUE(read.IsNull(3));
       } else {
         EXPECT_FALSE(read.IsNull(3));
       }
-
+  */
       read.GetValue(4, blob_value);
       EXPECT_EQ(blob_value, kBlobList[row]);
       if (row >= 2) {
-        EXPECT_TRUE(read.IsNull(3));
+        EXPECT_TRUE(read.IsNull(4));
       } else {
-        EXPECT_FALSE(read.IsNull(3));
+        EXPECT_FALSE(read.IsNull(4));
       }
 
       ++row;

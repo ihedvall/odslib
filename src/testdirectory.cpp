@@ -256,9 +256,9 @@ bool TestDirectory::FetchFromDb() {
   unit_list_.clear();
 
   const auto* test_bed_table = model_.GetTableByName("TestBed");
-  const auto* test_table = model_.GetBaseId(BaseId::AoTest);
-  const auto* quantity_table = model_.GetBaseId(BaseId::AoQuantity);
-  const auto* unit_table = model_.GetBaseId(BaseId::AoUnit);
+  const auto* test_table = model_.GetTableByBaseId(BaseId::AoTest);
+  const auto* quantity_table = model_.GetTableByBaseId(BaseId::AoQuantity);
+  const auto* unit_table = model_.GetTableByBaseId(BaseId::AoUnit);
 
   SqlFilter empty_filter;
   DatabaseGuard db_lock(*database_);
@@ -495,7 +495,7 @@ bool TestDirectory::AddTest() {
     return true;
   }
 
-  const auto* table = model_.GetBaseId(BaseId::AoTest);
+  const auto* table = model_.GetTableByBaseId(BaseId::AoTest);
   if (table == nullptr || table->DatabaseName().empty()) {
     return true;
   }
@@ -562,7 +562,7 @@ bool TestDirectory::DeleteTest() {
     return true;
   }
 
-  const auto* table = model_.GetBaseId(BaseId::AoTest);
+  const auto* table = model_.GetTableByBaseId(BaseId::AoTest);
   if (table == nullptr || table->DatabaseName().empty()) {
     return true;
   }
@@ -879,7 +879,7 @@ bool TestDirectory::UpdateMeasFile() {
 }
 
 bool TestDirectory::UpdateMeas(const MdfFile &meas_file, int64_t parent_index) {
-  const auto* table = model_.GetBaseId(BaseId::AoMeasurement);
+  const auto* table = model_.GetTableByBaseId(BaseId::AoMeasurement);
   if (table == nullptr || table->DatabaseName().empty() || parent_index <= 0) {
     return true;
   }
@@ -958,7 +958,7 @@ bool TestDirectory::UpdateMeas(const MdfFile &meas_file, int64_t parent_index) {
 }
 
 bool TestDirectory::UpdateMq(const IDataGroup &data_group, int64_t parent_index) {
-  const auto* table = model_.GetBaseId(BaseId::AoMeasurementQuantity);
+  const auto* table = model_.GetTableByBaseId(BaseId::AoMeasurementQuantity);
   if (table == nullptr || table->DatabaseName().empty() || parent_index <= 0) {
     return true;
   }
@@ -1071,7 +1071,7 @@ int64_t TestDirectory::UpdateQuantity(const IChannel& channel) {
     return (*itr)->ItemId();
   }
 
-  const auto* table = model_.GetBaseId(BaseId::AoQuantity);
+  const auto* table = model_.GetTableByBaseId(BaseId::AoQuantity);
   if (table == nullptr || table->DatabaseName().empty()) {
     return 0;
   }
@@ -1108,7 +1108,7 @@ int64_t TestDirectory::UpdateUnit(const std::string &unit) {
   if (itr != unit_list_.cend()) {
     return (*itr)->ItemId();
   }
-  const auto* table = model_.GetBaseId(BaseId::AoUnit);
+  const auto* table = model_.GetTableByBaseId(BaseId::AoUnit);
   if (table == nullptr || table->DatabaseName().empty()) {
     return 0;
   }

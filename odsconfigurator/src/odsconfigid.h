@@ -6,6 +6,7 @@
 namespace ods::gui {
 constexpr wxWindowID kIdOpenLogFile = 1;
 
+constexpr wxWindowID kIdRelationList = 4;
 constexpr wxWindowID kIdEnumList = 5;
 constexpr wxWindowID kIdItemList = 6;
 constexpr wxWindowID kIdTableList = 7;
@@ -51,4 +52,12 @@ constexpr wxWindowID kIdNoIndexFlag = 48;
 constexpr wxWindowID kIdCreateDbPostgres = 49;
 constexpr wxWindowID kIdImportPostgres = 50;
 constexpr wxWindowID kIdTestConnection = 51;
+constexpr wxWindowID kIdObligatoryFlag = 52;
+constexpr wxWindowID kIdNoObligatoryFlag = 53;
+constexpr wxWindowID kIdCaseSensitiveFlag = 54;
+constexpr wxWindowID kIdNoCaseSensitiveFlag = 55;
+
+constexpr wxWindowID kIdAddRelation = 56;
+constexpr wxWindowID kIdEditRelation = 57;
+constexpr wxWindowID kIdDeleteRelation = 58;
 }

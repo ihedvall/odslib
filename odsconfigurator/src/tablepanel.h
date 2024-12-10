@@ -43,10 +43,19 @@ class TablePanel : public wxPanel {
   void OnTableRightClick(wxTreeListEvent& event);
   void OnColumnRightClick(wxContextMenuEvent& event);
   void OnColumnActivated(wxListEvent& );
+
   void OnUniqueFlag(wxCommandEvent& );
   void OnNoUniqueFlag(wxCommandEvent& );
+
   void OnIndexFlag(wxCommandEvent& );
   void OnNoIndexFlag(wxCommandEvent& );
+
+  void OnObligatoryFlag(wxCommandEvent& );
+  void OnNoObligatoryFlag(wxCommandEvent& );
+
+  void OnCaseSensitiveFlag(wxCommandEvent& );
+  void OnNoCaseSensitiveFlag(wxCommandEvent& );
+
   void OnColumnUp(wxCommandEvent& );
   void OnColumnDown(wxCommandEvent& );
   void OnSizeChange(wxSizeEvent& event);

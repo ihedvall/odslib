@@ -10,13 +10,12 @@ namespace ods::gui {
  class OdsView : public wxView  {
   public:
    OdsView() = default;
-   OdsDocument* GetDocument() const;
 
    bool OnCreate(wxDocument* doc, long flags) override;
    bool OnClose(bool del) override;
 
    void OnDraw(wxDC *dc) override;
-   void OnUpdate(wxView *sender, wxObject *hint = nullptr) override;
+   void OnUpdate(wxView *sender, wxObject *hint) override;
 
   private:
 
