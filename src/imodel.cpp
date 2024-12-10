@@ -244,7 +244,7 @@ bool IModel::operator == (const IModel &model) const {
 
   // Check every enumeration
   for (const auto& [enum_name, enumeration1] : enum_list_) {
-    const auto *enumeration2 = GetEnum(enum_name);
+    const auto *enumeration2 = model.GetEnum(enum_name);
     if (enumeration2 == nullptr) {
       return false;
     }
@@ -260,7 +260,7 @@ bool IModel::operator == (const IModel &model) const {
 
     // Check every relation
   for (const auto& [relation_name, relation1] : relation_list_) {
-    const auto* relation2 = GetRelationByName(relation_name);
+    const auto* relation2 = model.GetRelationByName(relation_name);
     if ( relation2 == nullptr) {
       return false;
     }

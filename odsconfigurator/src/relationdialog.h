@@ -40,7 +40,7 @@ class RelationDialog : public wxDialog {
   wxString base_name_;
   wxString inverse_base_name_;
 
-  wxArrayString MakeTableList() const;
+  [[nodiscard]] wxArrayString MakeTableList() const;
 
   wxDECLARE_EVENT_TABLE();
 

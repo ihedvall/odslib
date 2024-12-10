@@ -364,8 +364,8 @@
     </Attribute>
   </Element>
   <RelationList>
-    <Relation name='eqwre'>
-      <Name>eqwre</Name>
+    <Relation name='eqwregdfs'>
+      <Name>eqwregdfs</Name>
       <ApplicationId1>0</ApplicationId1>
       <ApplicationId2>0</ApplicationId2>
       <DatabaseName/>
