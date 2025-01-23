@@ -81,6 +81,24 @@ constexpr std::string_view kInsertSvcAttr =
     "VALUES (%lld, %lld, %Q, %Q, %s, %s, %d, %d, %Q, %lld, %Q, %d, %Q, %Q, "
     "%Q, %d, %Q)";
 
+constexpr std::string_view kCreateSvcRef =
+    "CREATE TABLE IF NOT EXISTS SVCREF ("
+    "AID1 integer NOT NULL, "
+    "AID2 integer NOT NULL, "
+    "REFNAME varchar NOT NULL, "
+    "DBTNAME varchar NOT NULL, "
+    "INVNAME varchar, "
+    "BANAME varchar, "
+    "INVBANAME varchar, "
+    "CONSTRAINT pk_svcref PRIMARY KEY (AID1, AID2, REFNAME))";
+
+
+
+constexpr std::string_view kInsertSvcRef =
+    "INSERT INTO SVCREF ("
+    "AID1,AID2,REFNAME,DBTNAME,INVNAME,BANAME,INVBANAME) "
+    "VALUES (%lld, %lld, %Q, %Q, %Q, %Q, %Q)";
+
 std::string GetLocalTimeDirText() {
   const time_t now = std::time(nullptr);
   const struct tm* bt = localtime(&now);
@@ -307,11 +325,15 @@ bool IDatabase::Create(const IModel &model) {
   const auto svc_enum = CreateSvcEnumTable(model);
   const auto svc_ent = CreateSvcEntTable(model);
   const auto svc_attr = CreateSvcAttrTable(model);
+  const auto svc_ref = CreateSvcRefTable(model);
+
   const auto tables = CreateTables(model);
+  const auto relation_tables = CreateRelationTables(model);
   const auto units = InsertModelUnits(model);
   const auto env = InsertModelEnvironment(model);
   const auto close = Close(true);
-  return close && svc_enum && svc_ent && svc_attr && tables && units && env;
+  return close && svc_enum && svc_ent && svc_attr && svc_ref
+              && tables && relation_tables && units && env;
 }
 
 bool IDatabase::CreateSvcEnumTable(const IModel &model) {
@@ -426,6 +448,39 @@ bool IDatabase::CreateSvcAttrTable(const IModel &model) {
   return true;
 }
 
+bool IDatabase::CreateSvcRefTable(const IModel &model) {
+
+  try {
+    ExecuteSql(kCreateSvcRef.data());
+    const auto& relation_list = model.GetRelationList();
+    // Insert relation list items
+    for (const auto& [name, relation] : relation_list) {
+      if (relation.Name().empty() || relation.ApplicationId1() <= 0 || relation.ApplicationId2() <= 0) {
+        LOG_ERROR() << "Invalid relation table (SVCREF) found. Name: " << relation.Name()
+          << ", AID1: " << relation.ApplicationId1()
+          << ", AID2: " << relation.ApplicationId2();
+        continue;
+      }
+      auto* insert = sqlite3_mprintf( kInsertSvcRef.data(),
+                            relation.ApplicationId1(),
+                            relation.ApplicationId2(),
+                            relation.Name().c_str(),
+                            relation.DatabaseName().empty() ? nullptr : relation.DatabaseName().c_str(),
+                            relation.InverseName().empty() ? nullptr : relation.InverseName().c_str(),
+                            relation.BaseName().empty() ? nullptr : relation.BaseName().c_str(),
+                            relation.InverseBaseName().empty() ? nullptr : relation.InverseBaseName().c_str());
+
+      const std::string sql = insert;
+      sqlite3_free(insert);
+      ExecuteSql(sql);
+    }
+  } catch (std::exception& err) {
+    LOG_ERROR() << "Failed to create the SVCREF table. Error: " << err.what();
+    return false;
+  }
+  return true;
+}
+
 bool IDatabase::CreateTables(const IModel &model) {
   // Some database support comments on table and column.
   bool use_comment = false; // Add comments to the database
@@ -505,6 +560,69 @@ bool IDatabase::CreateTables(const IModel &model) {
   }
 
   return true;
+}
+
+bool IDatabase::CreateRelationTables(const IModel &model) {
+  bool create_ok = true;
+
+  // Note that the error handling is divided into 2 type of errors.
+  // The first type of errors are normal for incomplete
+  // database models. The other type of error are type of errors that
+  // is for complete models. The latter errors are treated as an error.
+
+  const auto& relation_list = model.GetRelationList();
+  for (const auto& [name, relation] : relation_list) {
+    if (relation.Name().empty() || relation.DatabaseName().empty()) {
+      LOG_INFO() << "Relation name is empty.";
+      continue;
+    }
+    const auto* table1 = model.GetTable(relation.ApplicationId1());
+    const auto* table2 = model.GetTable(relation.ApplicationId2());
+    if (table1 == nullptr) {
+      LOG_INFO() << "Relation table 1 doesn't exist. Relation: " << name
+        << ", AID1: " << relation.ApplicationId1();
+      continue;
+    }
+    if (table2 == nullptr) {
+      LOG_INFO() << "Relation table 2 doesn't exist. Relation: " << name
+           << ", AID2: " << relation.ApplicationId2();
+      continue;
+    }
+    try {
+      const auto* column1 = table1->GetColumnByBaseName("id");
+      const auto* column2 = table2->GetColumnByBaseName("id");
+      if (column1 == nullptr || column1->DatabaseName().empty()) {
+        std::ostringstream err;
+        err << "Relation table 1 doesn't have an index column. Table: " << table1->ApplicationName();
+        throw std::runtime_error(err.str());
+      }
+      if (column2 == nullptr || column2->DatabaseName().empty()) {
+        std::ostringstream err;
+        err << "Relation table 2 doesn't have an index column. Table: " << table2->ApplicationName();
+        throw std::runtime_error(err.str());
+      }
+      if ( IEquals(column1->DatabaseName(), column2->DatabaseName()) ) {
+        std::ostringstream err;
+        err << "The relation table indexes have the same column names. Relation: " << name
+          << ", Column: " << column1->DatabaseName();
+        throw std::runtime_error(err.str());
+      }
+      // Create the table
+      std::ostringstream sql;
+      sql << "CREATE TABLE IF NOT EXISTS " << relation.DatabaseName() << " ("
+        << column1->DatabaseName() <<  " integer NOT NULL, "
+        << column2->DatabaseName() <<  " integer NOT NULL, "
+        << "REFNAME varchar DEFAULT '" << relation.Name() << "', "
+        << "CONSTRAINT pk_" << relation.Name() << " PRIMARY KEY ("
+        << column1->DatabaseName() << ","
+        << column2->DatabaseName() << ",REFNAME) )";
+      ExecuteSql(sql.str());
+    } catch (const std::exception& err) {
+      LOG_ERROR() << "Failed to create the relation tables. Error: " << err.what();
+      create_ok = false;
+    }
+  }
+  return create_ok;
 }
 
 std::string IDatabase::MakeCreateTableSql(const ods::IModel& model,
@@ -675,6 +793,8 @@ bool IDatabase::ReadModel(IModel &model) {
   const auto svc_enum = ReadSvcEnumTable(model);
   const auto svc_ent = ReadSvcEntTable(model);
   const auto svc_attr = ReadSvcAttrTable(model);
+  const auto svc_ref = ReadSvcRefTable(model);
+
   const auto units = FixUnitStrings(model);
   const auto env = FetchModelEnvironment(model);
 
@@ -697,7 +817,7 @@ bool IDatabase::ReadModel(IModel &model) {
     }
   }
 
-  return svc_enum && svc_ent && svc_attr && units && env;
+  return svc_enum && svc_ent && svc_attr && svc_ref && units && env;
 }
 
 size_t IDatabase::Count(const ITable &table, const SqlFilter& filter) {
@@ -715,6 +835,21 @@ size_t IDatabase::Count(const ITable &table, const SqlFilter& filter) {
   }
   const auto ret_val = ExecuteSql(sql.str());
   return static_cast<size_t>(ret_val);
+}
+
+bool IDatabase::ExistDatabaseTable(const std::string &dbt_name) {
+  if (!IsOpen()) {
+    throw std::runtime_error("The database is not open.");
+  }
+  if (dbt_name.empty()) {
+    return false;
+  }
+
+  std::ostringstream sql;
+  sql << "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES "
+    << "WHERE TABLE_NAME = '" << dbt_name << "'";
+  const auto ret_val = ExecuteSql(sql.str());
+  return ret_val > 0;
 }
 
 void IDatabase::AddComments(const ITable &table) {

@@ -8,6 +8,49 @@
 #include <wx/docmdi.h>
 #include "relationdialog.h"
 
+namespace {
+  constexpr int kBmpRelation = 5;
+
+
+int BaseIdImage(ods::BaseId base_id) {
+  switch (base_id) {
+    case ods::BaseId::AoAny: return 0;
+    case ods::BaseId::AoEnvironment: return 1;
+    case ods::BaseId::AoSubTest: return 3;
+    case ods::BaseId::AoMeasurement: return 4;
+    case ods::BaseId::AoMeasurementQuantity: return 8;
+    case ods::BaseId::AoQuantity: return 9;
+    case ods::BaseId::AoQuantityGroup: return 10;
+    case ods::BaseId::AoUnit: return 11;
+    case ods::BaseId::AoUnitGroup: return 12;
+    case ods::BaseId::AoPhysicalDimension: return 13;
+    case ods::BaseId::AoUnitUnderTest: return 14;
+    case ods::BaseId::AoUnitUnderTestPart: return 15;
+    case ods::BaseId::AoTestEquipment: return 16;
+    case ods::BaseId::AoTestEquipmentPart: return 17;
+    case ods::BaseId::AoTestSequence: return 18;
+    case ods::BaseId::AoTestSequencePart: return 19;
+    case ods::BaseId::AoUser: return 20;
+    case ods::BaseId::AoUserGroup: return 21;
+    case ods::BaseId::AoTest: return 2;
+    case ods::BaseId::AoTestDevice: return 17;
+    case ods::BaseId::AoSubMatrix: return 5;
+    case ods::BaseId::AoLocalColumn: return 6;
+    case ods::BaseId::AoExternalComponent: return 7;
+    case ods::BaseId::AoLog: return 22;
+    case ods::BaseId::AoParameter: return 23;
+    case ods::BaseId::AoParameterSet: return 24;
+    case ods::BaseId::AoNameMap: return 26;
+    case ods::BaseId::AoAttributeMap: return 27;
+    case ods::BaseId::AoFile: return 28;
+    case ods::BaseId::AoMimetypeMap: return 0;
+    default:break;
+  }
+  return 30;
+}
+
+}
+
 namespace ods::gui {
 
 wxBEGIN_EVENT_TABLE(RelationPanel, wxPanel) //NOLINT
@@ -18,13 +61,13 @@ wxEND_EVENT_TABLE()
 
 RelationPanel::RelationPanel(wxWindow *parent)
     : wxPanel(parent),
-      image_list_(16,16,false,2) {
-  image_list_.Add(wxBitmap("ENUM_LIST", wxBITMAP_TYPE_BMP_RESOURCE));
+      image_list_(16,16,false,31) {
+  image_list_.Add(wxBitmap("TREE_LIST", wxBITMAP_TYPE_BMP_RESOURCE));
   list_ = new wxListView(this, kIdRelationList, wxDefaultPosition, {900, 600},
                          wxLC_REPORT | wxLC_SINGLE_SEL);
   list_->AppendColumn("Name", wxLIST_FORMAT_LEFT, 200);
-  list_->AppendColumn("Table 1", wxLIST_FORMAT_LEFT, 100);
-  list_->AppendColumn("Table 2", wxLIST_FORMAT_LEFT, 100);
+  list_->AppendColumn("Table 1", wxLIST_FORMAT_LEFT, 150);
+  list_->AppendColumn("Table 2", wxLIST_FORMAT_LEFT, 150);
   list_->AppendColumn("Database Name", wxLIST_FORMAT_LEFT, 100);
   list_->AppendColumn("Inverse Name", wxLIST_FORMAT_LEFT, 100);
   list_->AppendColumn("Base Name", wxLIST_FORMAT_LEFT, 100);
@@ -62,23 +105,27 @@ void RelationPanel::RedrawRelationList() {
     if (!selected_relation.empty() && relation.Name() == selected_relation) {
       selected = row;
     }
-    list_->InsertItem(row, wxString::FromUTF8(name), 0);
+    list_->InsertItem(row, wxString::FromUTF8(name), kBmpRelation);
 
     std::ostringstream text1;
     text1 << "(" << relation.ApplicationId1() << ")";
+    BaseId base_id1 = BaseId::AoAny;
     const auto* table1 = model.GetTable(relation.ApplicationId1());
     if (table1 != nullptr) {
       text1 << " " << table1->ApplicationName();
+      base_id1 = table1->BaseId();
     }
-    list_->SetItem(row, 1, wxString::FromUTF8(text1.str()));
+    list_->SetItem(row, 1, wxString::FromUTF8(text1.str()), BaseIdImage(base_id1));
 
     std::ostringstream text2;
     text2 << "(" << relation.ApplicationId2() << ")";
+    BaseId base_id2 = BaseId::AoAny;
     const auto* table2 = model.GetTable(relation.ApplicationId2());
     if (table2 != nullptr) {
       text2 << " " << table2->ApplicationName();
+      base_id2 = table2->BaseId();
     }
-    list_->SetItem(row, 2, wxString::FromUTF8(text2.str()));
+    list_->SetItem(row, 2, wxString::FromUTF8(text2.str()), BaseIdImage(base_id2));
 
     list_->SetItem(row, 3, wxString::FromUTF8( relation.DatabaseName() ));
     list_->SetItem(row, 4, wxString::FromUTF8( relation.InverseName() ));
@@ -143,6 +190,8 @@ void RelationPanel::OnAddRelation(wxCommandEvent &) {
     return;
   }
   auto& model = doc->GetModel();
+  // Normally the selected relation should be copied here but
+  // most properties should be unique for this relation.
   const IRelation empty;
   RelationDialog dialog(this, model, empty);
   const auto ret = dialog.ShowModal();

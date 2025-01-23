@@ -122,7 +122,7 @@
     </Attribute>
   </Element>
   <Element base='AoUnit' id='20' name='Unit' table='UNIT'>
-    <Attribute name='Index' column='IID'>
+    <Attribute name='Index' column='UNIT_ID'>
       <DisplayName>Item ID</DisplayName>
       <BaseName>id</BaseName>
       <Type>DtLongLong</Type>
@@ -188,6 +188,36 @@
       <DisplayName>Description</DisplayName>
       <BaseName>description</BaseName>
       <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoUnitGroup' id='50' name='UnitGroup' table='UNITGROUP'>
+    <Attribute name='Index' column='GROUP_ID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
     </Attribute>
   </Element>
   <Element base='AoTestEquipment' id='60' name='SparkplugBSystem' table='SPB_SYSTEM'>
@@ -364,11 +394,11 @@
     </Attribute>
   </Element>
   <RelationList>
-    <Relation name='eqwregdfs'>
-      <Name>eqwregdfs</Name>
-      <ApplicationId1>0</ApplicationId1>
-      <ApplicationId2>0</ApplicationId2>
-      <DatabaseName/>
+    <Relation name='UnitToGroup' table1='Unit' table2='UnitGroup'>
+      <Name>UnitToGroup</Name>
+      <ApplicationId1>20</ApplicationId1>
+      <ApplicationId2>50</ApplicationId2>
+      <DatabaseName>UNITTOGROUP</DatabaseName>
       <InverseName/>
       <BaseName/>
       <InverseBaseName/>

@@ -123,9 +123,9 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& start_pos, const wxSi
 
   // RELATION
   auto *menu_relation = new wxMenu;
-  menu_enum->Append(kIdAddRelation,wxGetStockLabel(wxID_ADD));
-  menu_enum->Append(kIdEditRelation, wxGetStockLabel(wxID_EDIT));
-  menu_enum->Append(kIdDeleteRelation, wxGetStockLabel(wxID_DELETE));
+  menu_relation->Append(kIdAddRelation,wxGetStockLabel(wxID_ADD));
+  menu_relation->Append(kIdEditRelation, wxGetStockLabel(wxID_EDIT));
+  menu_relation->Append(kIdDeleteRelation, wxGetStockLabel(wxID_DELETE));
 
   // ABOUT
   auto *menu_about = new wxMenu;

@@ -31,6 +31,7 @@ class SqliteDatabase : public IDatabase {
   [[nodiscard]] bool OpenEx(int flags = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE);
   bool Close(bool commit) override;
   [[nodiscard]] bool IsOpen() const override;
+  bool ExistDatabaseTable(const std::string& dbt_name) override;
 
   [[nodiscard]] bool Create(const IModel& model) override;
 
@@ -70,6 +71,8 @@ protected:
   bool ReadSvcEnumTable(IModel& model) override;
   bool ReadSvcEntTable(IModel& model) override;
   bool ReadSvcAttrTable(IModel& model) override;
+  bool ReadSvcRefTable(IModel& model) override;
+
   bool FetchModelEnvironment(IModel& model) override;
 
   static int TraceCallback(unsigned mask, void* context,  void* arg1,

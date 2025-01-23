@@ -26,7 +26,7 @@ add_executable(reportexplorer
 
 target_include_directories(reportexplorer PRIVATE ${wxWidgets_INCLUDE_DIRS})
 target_include_directories(reportexplorer PRIVATE ${Boost_INCLUDE_DIRS})
-
+target_include_directories(reportexplorer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../extern/sqlite/src)
 target_include_directories(reportexplorer PRIVATE ${mdflib_SOURCE_DIR}/include)
 target_include_directories(reportexplorer PRIVATE ${utillib_SOURCE_DIR}/include)
 target_include_directories(reportexplorer PRIVATE ${odslib_SOURCE_DIR}/include)

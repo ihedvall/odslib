@@ -206,6 +206,21 @@ bool SqliteDatabase::IsOpen() const {
   return database_ != nullptr;
 }
 
+bool SqliteDatabase::ExistDatabaseTable(const std::string &dbt_name)  {
+  if (!IsOpen()) {
+    throw std::runtime_error("The database is not open.");
+  }
+  if (dbt_name.empty()) {
+    return false;
+  }
+
+  std::ostringstream sql;
+  sql << "SELECT COUNT(*)  FROM sqlite_master "
+      << "WHERE type='table' AND 'name=" << dbt_name << "'" ;
+  const auto ret_val = ExecuteSql(sql.str());
+  return ret_val > 0;
+}
+
 int SqliteDatabase::ExecCallback(void *object, int rows, char **value_list,
                                  char **column_list) {
   auto* database = reinterpret_cast<SqliteDatabase*>(object);
@@ -282,13 +297,16 @@ bool SqliteDatabase::Create(const IModel &model) {
   const auto svc_enum = CreateSvcEnumTable(model);
   const auto svc_ent = CreateSvcEntTable(model);
   const auto svc_attr = CreateSvcAttrTable(model);
+  const auto svc_ref = CreateSvcRefTable(model);
 
   const auto tables = CreateTables(model);
+  const auto relation_tables = CreateRelationTables(model);
   const auto units = InsertModelUnits(model);
   const auto env = InsertModelEnvironment(model);
 
   const auto close = Close(true);
-  return close && svc_enum && svc_ent && svc_attr && tables && units && env;
+  return close && svc_enum && svc_ent && svc_attr && svc_ref && tables
+               && relation_tables && units && env;
 }
 
 
@@ -442,8 +460,40 @@ bool SqliteDatabase::ReadSvcAttrTable(IModel &model) {
 }
 
 
+bool SqliteDatabase::ReadSvcRefTable(IModel &model) {
+  model.GetRelationList().clear();
+  if (!ExistDatabaseTable("SVCREF")) {
+    return true;
+  }
+  try {
+    SqliteStatement select(database_, "SELECT * FROM SVCREF");
+    const auto app_id1 = select.GetColumnIndex("AID1");
+    const auto app_id2 = select.GetColumnIndex("AID2");
+    const auto ref_name = select.GetColumnIndex("REFNAME");
+    const auto dbt_name = select.GetColumnIndex("DBTNAME");
+    const auto inv_name = select.GetColumnIndex("INVNAME");
+    const auto base_name = select.GetColumnIndex("BANAME");
+    const auto inv_base_name = select.GetColumnIndex("INVBANAME");
 
+    for (bool more = select.Step(); more ; more = select.Step()) {
+      IRelation relation;
+      relation.ApplicationId1(select.Value<int64_t>(app_id1));
+      relation.ApplicationId2(select.Value<int64_t>(app_id2));
+      relation.Name(select.Value<std::string>(ref_name));
+      relation.DatabaseName(select.Value<std::string>(dbt_name));
+      relation.BaseName(select.Value<std::string>(base_name));
+      relation.InverseName(select.Value<std::string>(inv_name));
+      relation.BaseName(select.Value<std::string>(base_name));
+      relation.InverseBaseName(select.Value<std::string>(inv_base_name));
+      model.AddRelation(relation);
+    }
+  } catch (const std::exception& err) {
+    LOG_ERROR() << "Failed to read the SVCREF table. Error: " << err.what();
+    return false;
+  }
 
+  return true;
+}
 
 void SqliteDatabase::FetchNameMap(const ITable &table, IdNameMap& dest_list, const SqlFilter& filter) {
   if (!IsOpen()) {

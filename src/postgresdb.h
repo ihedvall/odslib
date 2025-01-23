@@ -42,6 +42,8 @@ protected:
   bool ReadSvcEnumTable(IModel& model) override;
   bool ReadSvcEntTable(IModel& model) override;
   bool ReadSvcAttrTable(IModel& model) override;
+  bool ReadSvcRefTable(IModel& model) override;
+
   bool FetchModelEnvironment(IModel& model) override;
 private:
   PGconn* connection_ = nullptr;

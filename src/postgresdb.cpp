@@ -444,6 +444,41 @@ bool PostgresDb::ReadSvcAttrTable(IModel &model) {
   return true;
 }
 
+bool PostgresDb::ReadSvcRefTable(IModel &model) {
+  model.GetRelationList().clear();
+  if (!ExistDatabaseTable("SVCREF")) {
+    return true;
+  }
+
+  try {
+    PostgresStatement select(connection_, "SELECT * FROM SVCREF");
+    const auto app_id1 = select.GetColumnIndex("AID1");
+    const auto app_id2 = select.GetColumnIndex("AID2");
+    const auto ref_name = select.GetColumnIndex("REFNAME");
+    const auto dbt_name = select.GetColumnIndex("DBTNAME");
+    const auto inv_name = select.GetColumnIndex("INVNAME");
+    const auto base_name = select.GetColumnIndex("BANAME");
+    const auto inv_base_name = select.GetColumnIndex("INVBANAME");
+
+    for (bool more = select.Step(); more ; more = select.Step()) {
+      IRelation relation;
+      relation.ApplicationId1(select.Value<int64_t>(app_id1));
+      relation.ApplicationId2(select.Value<int64_t>(app_id2));
+      relation.Name(select.Value<std::string>(ref_name));
+      relation.DatabaseName(select.Value<std::string>(dbt_name));
+      relation.BaseName(select.Value<std::string>(base_name));
+      relation.InverseName(select.Value<std::string>(inv_name));
+      relation.BaseName(select.Value<std::string>(base_name));
+      relation.InverseBaseName(select.Value<std::string>(inv_base_name));
+      model.AddRelation(relation);
+    }
+    } catch (std::exception& err) {
+    LOG_ERROR() << "Failed to read the SVCREF table. Error: " << err.what();
+    return false;
+  }
+  return true;
+}
+
 bool PostgresDb::FetchModelEnvironment(IModel &model) {
 
   try {

@@ -70,6 +70,8 @@ class IDatabase {
   virtual int64_t ExecuteSql(const std::string& sql) = 0;
   virtual size_t Count(const ITable& table, const SqlFilter& filter);
 
+  virtual bool ExistDatabaseTable(const std::string& dbt_name);
+
   virtual void FetchNameMap(const ITable& table, IdNameMap &dest_list,
                             const SqlFilter& filter) = 0;
   virtual void FetchItemList(const ITable& table, ItemList &dest_list,
@@ -114,7 +116,11 @@ class IDatabase {
   bool CreateSvcEnumTable(const IModel &model);
   bool CreateSvcEntTable(const IModel &model);
   bool CreateSvcAttrTable(const IModel &model);
+  bool CreateSvcRefTable(const IModel &model);
+
   bool CreateTables(const IModel& model);
+  bool CreateRelationTables(const IModel& model);
+
   std::string MakeCreateTableSql(const IModel& model,
                                 const ITable& table);
   bool InsertModelEnvironment(const IModel& model);
@@ -124,6 +130,7 @@ class IDatabase {
   virtual bool ReadSvcEnumTable(IModel& model) = 0;
   virtual bool ReadSvcEntTable(IModel& model) = 0;
   virtual bool ReadSvcAttrTable(IModel& model) = 0;
+  virtual bool ReadSvcRefTable(IModel& model) = 0;
   virtual bool FetchModelEnvironment(IModel& model) = 0;
 
   [[nodiscard]] virtual std::string DataTypeToDbString(DataType type) = 0;
