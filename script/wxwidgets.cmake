@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 if (NOT wxWidgets_FOUND )
-    find_package(wxWidgets COMPONENTS adv core base)
+    find_package(wxWidgets COMPONENTS adv ribbon core base)
 endif()
 
 if (NOT wxWidgets_FOUND)
@@ -14,7 +14,7 @@ if (NOT wxWidgets_FOUND)
         set(wxWidgets_LIB_DIR ${COMP_DIR}/wxwidgets/master/lib/gcc_x64_lib)
     endif()
 
-    find_package(wxWidgets COMPONENTS adv core base)
+    find_package(wxWidgets COMPONENTS adv ribbon core base)
     include(${wxWidgets_USE_FILE})
     message(STATUS "wxWidgets Found: " ${wxWidgets_FOUND})
     message(STATUS "wxWidgets Include Dirs: " ${wxWidgets_INCLUDE_DIRS})

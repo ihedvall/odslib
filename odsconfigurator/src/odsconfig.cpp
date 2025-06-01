@@ -3,9 +3,12 @@
  * SPDX-License-Identifier: MIT
  */
 #include <filesystem>
+
+#include <boost/asio.hpp>
 #include <boost/process.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/locale.hpp>
+
 #include <wx/wx.h>
 #include <wx/docview.h>
 #include <wx/config.h>
@@ -21,6 +24,10 @@
 #include "odsconfigid.h"
 
 using namespace util::log;
+
+namespace {
+  boost::asio::io_context kIoContext;
+} // End namespace
 
 namespace ods::gui {
 
@@ -118,7 +125,8 @@ void OdsConfig::OnUpdateOpenLogFile(wxUpdateUIEvent &event) {
 
 void OdsConfig::OpenFile(const std::string& filename) const {
   if (!notepad_.empty()) {
-    boost::process::spawn(notepad_, filename);
+    boost::process::process proc(kIoContext, notepad_, {filename});
+    proc.detach();
   }
 }
 

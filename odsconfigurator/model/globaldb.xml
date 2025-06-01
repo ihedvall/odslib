@@ -32,6 +32,43 @@
       <Item number='28' value='DT_EXTERNALREF'/>
       <Item number='30' value='DT_ENUM'/>
     </Enumerate>
+    <Enumerate name='metric_data_type' locked='true'>
+      <Item number='0' value='Unknown'/>
+      <Item number='1' value='8-bit Signed Integer'/>
+      <Item number='2' value='16-bit Signed Integer'/>
+      <Item number='3' value='32-bit Signed Integer'/>
+      <Item number='4' value='64-bit Signed Integer'/>
+      <Item number='5' value='8-bit Unsigned Integer'/>
+      <Item number='6' value='16-bit Unsigned Integer'/>
+      <Item number='7' value='32-bit Unsigned Integer'/>
+      <Item number='8' value='64-bit Unsigned Integer'/>
+      <Item number='9' value='32-bit Float'/>
+      <Item number='10' value='64-bit Float'/>
+      <Item number='11' value='Boolean'/>
+      <Item number='12' value='String'/>
+      <Item number='13' value='Timestamp'/>
+      <Item number='14' value='Text'/>
+      <Item number='15' value='UUID'/>
+      <Item number='16' value='Data Set'/>
+      <Item number='17' value='Bytes'/>
+      <Item number='18' value='File'/>
+      <Item number='19' value='Template'/>
+      <Item number='20' value='Property Set'/>
+      <Item number='21' value='Property Set List'/>
+      <Item number='22' value='8-bit Signed Integer Array'/>
+      <Item number='23' value='16-bit Signed Integer Array'/>
+      <Item number='24' value='32-bit Signed Integer Array'/>
+      <Item number='25' value='64-bit Signed Integer Array'/>
+      <Item number='26' value='8-bit Unsigned Integer Array'/>
+      <Item number='27' value='16-bit Unsigned Integer Array'/>
+      <Item number='28' value='32-bit Unsigned Integer Array'/>
+      <Item number='29' value='64-bit Unsigned Integer Array'/>
+      <Item number='30' value='32-bit Float Array'/>
+      <Item number='31' value='64-bit Float Array'/>
+      <Item number='32' value='Boolean Array'/>
+      <Item number='33' value='String Array'/>
+      <Item number='34' value='Timestamp Array'/>
+    </Enumerate>
     <Enumerate name='name_status_code' locked='true'>
       <Item number='0' value='Test Bed Specific'/>
       <Item number='1' value='System Specific'/>
@@ -69,6 +106,31 @@
     <Attribute name='AppType' column='APP_TYPE'>
       <DisplayName>Application Type</DisplayName>
       <BaseName>application_model_type</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='TimeZone' column='TIMEZONE'>
+      <DisplayName>Timezone</DisplayName>
+      <BaseName>timezone</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Region' column='REGION'>
+      <Description>Region of the environment/UNS</Description>
+      <DisplayName>Region</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='TopicStructure' column='TOPIC_STRUCT'>
+      <Description>MQTT topic structure</Description>
+      <DisplayName>Topic Structure</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='TopicStandard' column='TOPIC_STANDARD'>
+      <Description>MQTT topic standard</Description>
+      <DisplayName>Topic Standard</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='InfoStandard' column='INFO_STANDARD'>
+      <Description>The information model in use</Description>
+      <DisplayName>Information Standard</DisplayName>
       <Type>DtString</Type>
     </Attribute>
   </Element>
@@ -171,8 +233,82 @@
       <Flags auto='true'>4</Flags>
     </Attribute>
   </Element>
-  <Element base='AoQuantityGroup' id='40' name='QuantityGroup' table='QUANTITYGROUP'>
-    <Attribute name='Index' column='IID'>
+  <Element base='AoQuantity' id='30' name='GlobalName' table='GLOBAL_NAME'>
+    <Attribute name='Index' column='NAME_IID'>
+      <Description>Unique database index</Description>
+      <DisplayName>Index</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' obligatory='true' index='true'>135</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <Description>Unique name. Note that it is case-insensitive.</Description>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type length='64'>DtString</Type>
+      <Flags unique='true' obligatory='true' index='true'>131</Flags>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <Description>Description of the global name</Description>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Status' column='NAME_STATUS'>
+      <Description>Shows if it is test bed, system, candidate or global parameter</Description>
+      <DisplayName>Status</DisplayName>
+      <Type enum='name_status_code'>DtEnum</Type>
+      <Flags obligatory='true' index='true'>130</Flags>
+      <DefaultValue>0</DefaultValue>
+    </Attribute>
+    <Attribute name='Min' column='MIN_VALUE'>
+      <Description>Range minimum</Description>
+      <DisplayName>Range Min</DisplayName>
+      <Type>DtDouble</Type>
+      <DefaultValue>0.0</DefaultValue>
+    </Attribute>
+    <Attribute name='Max' column='MAX_VALUE'>
+      <Description>Range maximum</Description>
+      <DisplayName>Range Max</DisplayName>
+      <Type>DtDouble</Type>
+      <DefaultValue>0.0</DefaultValue>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='MqName' column='MQ_NAME'>
+      <DisplayName>Default MQ Name</DisplayName>
+      <BaseName>default_mq_name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='DataType' column='DATA_TYPE'>
+      <DisplayName>Data Type</DisplayName>
+      <BaseName>default_datatype</BaseName>
+      <Type enum='datatype_enum'>DtEnum</Type>
+      <Flags obligatory='true'>2</Flags>
+    </Attribute>
+    <Attribute name='Rank' column='RANK'>
+      <DisplayName>Rank</DisplayName>
+      <BaseName>default_rank</BaseName>
+      <Type>DtLong</Type>
+    </Attribute>
+    <Attribute name='Unit' column='UNIT'>
+      <DisplayName>Unit</DisplayName>
+      <BaseName>default_unit</BaseName>
+      <Type>DtLongLong</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoQuantityGroup' id='40' name='QuantityGroup' table='QUANTITY_GROUP'>
+    <Attribute name='Index' column='GROUP_IID'>
       <DisplayName>Item ID</DisplayName>
       <BaseName>id</BaseName>
       <Type>DtLongLong</Type>
@@ -190,7 +326,7 @@
       <Type>DtString</Type>
     </Attribute>
   </Element>
-  <Element base='AoUnitGroup' id='50' name='UnitGroup' table='UNITGROUP'>
+  <Element base='AoUnitGroup' id='50' name='UnitGroup' table='UNIT_GROUP'>
     <Attribute name='Index' column='GROUP_ID'>
       <DisplayName>Item ID</DisplayName>
       <BaseName>id</BaseName>
@@ -245,6 +381,253 @@
       <Type>DtLongLong</Type>
       <RefId>1</RefId>
     </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+  </Element>
+  <Element base='AoAny' id='70' name='Site' table='SITE'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Location' column='LOCATION'>
+      <DisplayName>Location</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoAny' id='71' name='Area' table='AREA' parent='70'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
+    </Attribute>
+    <Attribute name='Parent' column='PARENT'>
+      <DisplayName>Parent</DisplayName>
+      <BaseName>parent</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' obligatory='true' index='true'>131</Flags>
+      <RefId>70</RefId>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Location' column='LOCATION'>
+      <Description>Location of the area</Description>
+      <DisplayName>Location</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoAny' id='72' name='Line' table='LIME' parent='71'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
+    </Attribute>
+    <Attribute name='Parent' column='PARENT'>
+      <DisplayName>Parent</DisplayName>
+      <BaseName>parent</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' obligatory='true' index='true'>131</Flags>
+      <RefId>71</RefId>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Location' column='LOCATION'>
+      <Description>A specific test system or a production line</Description>
+      <DisplayName>Location</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoAny' id='73' name='Cell' table='CELL' parent='72'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
+    </Attribute>
+    <Attribute name='Parent' column='PARENT'>
+      <DisplayName>Parent</DisplayName>
+      <BaseName>parent</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' obligatory='true' index='true'>131</Flags>
+      <RefId>72</RefId>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Location' column='LOCATION'>
+      <Description>Location of the cell</Description>
+      <DisplayName>Location</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+  </Element>
+  <Element base='AoAny' id='80' name='Metric' table='METRIC'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='DataType' column='DATA_TYPE'>
+      <Description>The metrics data type</Description>
+      <DisplayName>Data Type</DisplayName>
+      <Type enum='metric_data_type'>DtEnum</Type>
+      <Flags obligatory='true'>2</Flags>
+      <DefaultValue>0</DefaultValue>
+    </Attribute>
+    <Attribute name='GlobalName' column='GLOBAL_NAME'>
+      <Description>Reference to a global name.</Description>
+      <DisplayName>Global Name</DisplayName>
+      <Type>DtLongLong</Type>
+      <RefId>30</RefId>
+    </Attribute>
+    <Attribute name='Unit' column='UNIT'>
+      <Description>Reference to unit.</Description>
+      <DisplayName>Unit</DisplayName>
+      <Type>DtLongLong</Type>
+      <RefId>20</RefId>
+    </Attribute>
+    <Attribute name='Rank' column='RANK'>
+      <Description>Dimension of the the value.</Description>
+      <DisplayName>Rank</DisplayName>
+      <Type>DtLong</Type>
+    </Attribute>
+    <Attribute name='NofDecimals' column='NOF_DECIMALS'>
+      <Description>Number of decimals. Only relevant for floating point values.</Description>
+      <DisplayName>Number of Decimals</DisplayName>
+      <Type>DtLong</Type>
+      <Flags obligatory='true'>2</Flags>
+      <DefaultValue>2</DefaultValue>
+    </Attribute>
+    <Attribute name='MinRange' column='MIN_RANGE'>
+      <Description>Minimum range</Description>
+      <DisplayName>Minimum Range</DisplayName>
+      <Type>DtDouble</Type>
+    </Attribute>
+    <Attribute name='MaxRange' column='MAX_RANGE'>
+      <Description>Maximum Range for the metric</Description>
+      <DisplayName>Maximum Range</DisplayName>
+      <Type>DtDouble</Type>
+    </Attribute>
   </Element>
   <Element base='AoTestEquipmentPart' id='61' name='SparkplugBNode' table='SPB_NODE' parent='60'>
     <Attribute name='Index' column='IID'>
@@ -277,6 +660,59 @@
       <Type enum='spb_node_type'>DtEnum</Type>
       <Flags obligatory='true'>2</Flags>
     </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='Host' column='HOST'>
+      <Description>MQTT broker including connection information</Description>
+      <DisplayName>MQTT Host</DisplayName>
+      <Type>DtString</Type>
+      <DefaultValue>127.0.0.1</DefaultValue>
+    </Attribute>
+    <Attribute name='Port' column='PORT'>
+      <Description>MQTT Port</Description>
+      <DisplayName>MQTT Port</DisplayName>
+      <Type>DtLong</Type>
+      <DefaultValue>1883</DefaultValue>
+    </Attribute>
+    <Attribute name='ConfigFile' column='CONFIG_FILE'>
+      <Description>Configuration file with mostly connection information.</Description>
+      <DisplayName>Configuration File</DisplayName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='UnsSite' column='UNS_SITE'>
+      <Description>UNS site location</Description>
+      <DisplayName>UNS Site</DisplayName>
+      <Type>DtLongLong</Type>
+      <RefId>70</RefId>
+    </Attribute>
+    <Attribute name='UnsArea' column='UNS_AREA'>
+      <Description>UNS area location.</Description>
+      <DisplayName>UNS Area</DisplayName>
+      <Type>DtLongLong</Type>
+      <RefId>71</RefId>
+    </Attribute>
+    <Attribute name='UnsLine' column='UNS_LINE'>
+      <Description>UNS line location.</Description>
+      <DisplayName>UNS Line</DisplayName>
+      <Type>DtLongLong</Type>
+      <RefId>72</RefId>
+    </Attribute>
+    <Attribute name='UnsCell' column='UNS_CELL'>
+      <Description>UNS cell location.</Description>
+      <DisplayName>UNS Cell</DisplayName>
+      <Type>DtLongLong</Type>
+      <RefId>73</RefId>
+    </Attribute>
   </Element>
   <Element base='AoTestDevice' id='62' name='SparkplugBDevice' table='SPB_DEVICE' parent='61'>
     <Attribute name='Index' column='IID'>
@@ -289,96 +725,19 @@
       <DisplayName>Name</DisplayName>
       <BaseName>name</BaseName>
       <Type>DtString</Type>
+      <Flags unique='true'>1</Flags>
     </Attribute>
     <Attribute name='TestEquipmentPart' column='TEST_EQP'>
       <DisplayName>Test Equipment Part</DisplayName>
       <BaseName>parent_equipment_part</BaseName>
       <Type>DtLongLong</Type>
-      <Flags obligatory='true' index='true'>130</Flags>
+      <Flags unique='true' obligatory='true' index='true'>131</Flags>
       <RefId>61</RefId>
     </Attribute>
     <Attribute name='Description' column='DESCRIPTION'>
       <DisplayName>Description</DisplayName>
       <BaseName>description</BaseName>
       <Type>DtString</Type>
-    </Attribute>
-  </Element>
-  <Element base='AoAny' id='30' name='GlobalName' table='GLOBALNAME'>
-    <Attribute name='Index' column='IID'>
-      <Description>Unique database index</Description>
-      <DisplayName>Index</DisplayName>
-      <BaseName>id</BaseName>
-      <Type>DtLongLong</Type>
-      <Flags unique='true' auto='true' obligatory='true' index='true'>135</Flags>
-    </Attribute>
-    <Attribute name='Name' column='NAME'>
-      <Description>Unique name. Note that it is case-insensitive.</Description>
-      <DisplayName>Name</DisplayName>
-      <BaseName>name</BaseName>
-      <Type length='64'>DtString</Type>
-      <Flags unique='true' obligatory='true' index='true'>131</Flags>
-    </Attribute>
-    <Attribute name='Description' column='DESCRIPTION'>
-      <Description>Description of the global name</Description>
-      <DisplayName>Description</DisplayName>
-      <BaseName>description</BaseName>
-      <Type>DtString</Type>
-    </Attribute>
-    <Attribute name='Unit' column='UNIT'>
-      <DisplayName>Unit</DisplayName>
-      <Type>DtLongLong</Type>
-      <Flags index='true'>128</Flags>
-      <RefId>20</RefId>
-    </Attribute>
-    <Attribute name='Decimals' column='DECIMALS'>
-      <Description>Number of decimals when displaying the value</Description>
-      <DisplayName>Decimals</DisplayName>
-      <Type>DtLong</Type>
-      <DefaultValue>2</DefaultValue>
-    </Attribute>
-    <Attribute name='Type' column='TYPE'>
-      <DisplayName>Type</DisplayName>
-      <Type enum='datatype_enum'>DtEnum</Type>
-      <Flags obligatory='true' index='true'>130</Flags>
-      <DefaultValue>3</DefaultValue>
-    </Attribute>
-    <Attribute name='QuantityGroup' column='QUANTITY_GROUP'>
-      <DisplayName>Quantity Group</DisplayName>
-      <Type>DtLongLong</Type>
-      <Flags index='true'>128</Flags>
-      <RefId>40</RefId>
-      <DefaultValue>0</DefaultValue>
-    </Attribute>
-    <Attribute name='Status' column='NAME_STATUS'>
-      <Description>Shows if it is test bed, system, candidate or global parameter</Description>
-      <DisplayName>Status</DisplayName>
-      <Type enum='name_status_code'>DtEnum</Type>
-      <Flags obligatory='true' index='true'>130</Flags>
-      <DefaultValue>0</DefaultValue>
-    </Attribute>
-    <Attribute name='Min' column='MIN_VALUE'>
-      <Description>Range minimum</Description>
-      <DisplayName>Range Min</DisplayName>
-      <Type>DtDouble</Type>
-      <DefaultValue>0.0</DefaultValue>
-    </Attribute>
-    <Attribute name='Max' column='MAX_VALUE'>
-      <Description>Range maximum</Description>
-      <DisplayName>Range Max</DisplayName>
-      <Type>DtDouble</Type>
-      <DefaultValue>0.0</DefaultValue>
-    </Attribute>
-    <Attribute name='Created' column='CREATED'>
-      <DisplayName>Created</DisplayName>
-      <BaseName>ao_created</BaseName>
-      <Type>DtDate</Type>
-      <Flags auto='true'>4</Flags>
-    </Attribute>
-    <Attribute name='CreatedBy' column='CREATED_BY'>
-      <DisplayName>Created By</DisplayName>
-      <BaseName>ao_created_by</BaseName>
-      <Type>DtString</Type>
-      <Flags auto='true'>4</Flags>
     </Attribute>
     <Attribute name='Modified' column='MODIFIED'>
       <DisplayName>Modified</DisplayName>
@@ -393,7 +752,74 @@
       <Flags auto='true'>4</Flags>
     </Attribute>
   </Element>
+  <Element base='AoAny' id='81' name='SparkplugBMetric' table='SPB_METRIC' parent='80'>
+    <Attribute name='Index' column='IID'>
+      <DisplayName>Item ID</DisplayName>
+      <BaseName>id</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' auto='true' index='true'>133</Flags>
+    </Attribute>
+    <Attribute name='Name' column='NAME'>
+      <DisplayName>Name</DisplayName>
+      <BaseName>name</BaseName>
+      <Type>DtString</Type>
+      <Flags unique='true' obligatory='true'>3</Flags>
+    </Attribute>
+    <Attribute name='Parent' column='PARENT'>
+      <DisplayName>Parent</DisplayName>
+      <BaseName>parent</BaseName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='true' index='true'>130</Flags>
+      <RefId>80</RefId>
+    </Attribute>
+    <Attribute name='Description' column='DESCRIPTION'>
+      <DisplayName>Description</DisplayName>
+      <BaseName>description</BaseName>
+      <Type>DtString</Type>
+    </Attribute>
+    <Attribute name='Modified' column='MODIFIED'>
+      <DisplayName>Modified</DisplayName>
+      <BaseName>ao_last_modified</BaseName>
+      <Type>DtDate</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='ModifiedBy' column='MODIFIED_BY'>
+      <DisplayName>Modified By</DisplayName>
+      <BaseName>ao_last_modified_by</BaseName>
+      <Type>DtString</Type>
+      <Flags auto='true'>4</Flags>
+    </Attribute>
+    <Attribute name='SparkplugBNode' column='SPB_NODE'>
+      <Description>Reference to the Sparkplug B node.</Description>
+      <DisplayName>Sparkplug B Node</DisplayName>
+      <Type>DtLongLong</Type>
+      <Flags unique='true' obligatory='true'>3</Flags>
+      <RefId>61</RefId>
+    </Attribute>
+    <Attribute name='SparkplugBDevice' column='SPB_DEVICE'>
+      <Description>Reference to a Sparkplug B device</Description>
+      <DisplayName>Sparkplug B Device</DisplayName>
+      <Type>DtLongLong</Type>
+      <RefId>62</RefId>
+    </Attribute>
+    <Attribute name='Metric' column='METRIC'>
+      <Description>Reference to a metric</Description>
+      <DisplayName>Metric</DisplayName>
+      <Type>DtLongLong</Type>
+      <Flags obligatory='true'>2</Flags>
+      <RefId>80</RefId>
+    </Attribute>
+  </Element>
   <RelationList>
+    <Relation name='NameToGroup' table1='GlobalName' table2='QuantityGroup'>
+      <Name>NameToGroup</Name>
+      <ApplicationId1>30</ApplicationId1>
+      <ApplicationId2>40</ApplicationId2>
+      <DatabaseName>NAMETOGROUP</DatabaseName>
+      <InverseName/>
+      <BaseName/>
+      <InverseBaseName/>
+    </Relation>
     <Relation name='UnitToGroup' table1='Unit' table2='UnitGroup'>
       <Name>UnitToGroup</Name>
       <ApplicationId1>20</ApplicationId1>

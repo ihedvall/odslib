@@ -4,6 +4,8 @@
  */
 #include <filesystem>
 #include <algorithm>
+
+#include <boost/asio.hpp>
 #include <boost/process.hpp>
 #include <boost/locale.hpp>
 
@@ -23,6 +25,10 @@
 #include "fetchvalue.h"
 
 using namespace util::log;
+
+namespace {
+  boost::asio::io_context kIoContext;
+} // End namespace
 
 namespace ods::gui {
 
@@ -167,7 +173,8 @@ void ReportExplorer::OnUpdateOpenLogFile(wxUpdateUIEvent &event) {
 
 void ReportExplorer::OpenFile(const std::string& filename) const {
   if (!notepad_.empty()) {
-    boost::process::spawn(notepad_, filename);
+    boost::process::process proc(kIoContext, notepad_, {filename});
+    proc.detach();
   }
 }
 

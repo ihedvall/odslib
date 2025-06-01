@@ -106,6 +106,7 @@ install(TARGETS ods
 if (wxWidgets_FOUND AND ODS_TOOLS)
     add_subdirectory(odsconfigurator)
     add_subdirectory(reportexplorer)
+    add_subdirectory(global_name)
 endif()
 
 if (ODS_TEST)
