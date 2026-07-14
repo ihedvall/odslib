@@ -6,7 +6,11 @@
 #include "postgresdialog.h"
 #include <wx/config.h>
 #include "odsconfigid.h"
+
+#ifdef ODS_POSTGRES
 #include <libpq-fe.h>
+#endif
+
 #include <sstream>
 #include <util/stringutil.h>
 
@@ -107,6 +111,7 @@ void PostgresDialog::OnTestConnection(wxCommandEvent &event) {
 }
 
 bool PostgresDialog::CheckConnectionString() {
+#ifdef ODS_POSTGRES
   char *error_msg = nullptr;
   auto *connect_info = PQconninfoParse(ConnectionString().c_str(), &error_msg);
   if (error_msg != nullptr) {
@@ -155,11 +160,12 @@ bool PostgresDialog::CheckConnectionString() {
     config->Write(L"/Postgres/ConnectionString", connection_string_);
     config->Flush();
   }
+#endif
   return true;
 }
 
 bool PostgresDialog::TestConnection() {
-
+#ifdef ODS_POSTGRES
   if (auto* connect = PQconnectdb(ConnectionString().c_str());
       connect != nullptr) {
     const auto status = PQstatus(connect);
@@ -192,6 +198,7 @@ bool PostgresDialog::TestConnection() {
       return false;
     }
   }
+#endif
   return true;
 }
 

@@ -39,9 +39,12 @@ wxBEGIN_EVENT_TABLE(OdsConfig, wxApp)
 wxEND_EVENT_TABLE()
 
 bool OdsConfig::OnInit() {
+
   if (!wxApp::OnInit()) {
     return false;
   }
+
+  SetAppearance(Appearance::System);
   // Setup correct localization when formatting date and times
   boost::locale::generator gen;
   std::locale::global(gen(""));

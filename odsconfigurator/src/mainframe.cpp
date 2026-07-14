@@ -11,11 +11,15 @@
 #include <util/logstream.h>
 #include <ods/atfxfile.h>
 #include "sqlitedatabase.h"
-#include "postgresdb.h"
+
 #include "mainframe.h"
 #include "odsconfigid.h"
 #include "odsdocument.h"
+
+#ifdef ODS_POSTGRES
+#include "postgresdb.h"
 #include "postgresdialog.h"
+#endif
 
 using namespace util::log;
 using namespace std::filesystem;
@@ -416,6 +420,7 @@ void MainFrame::OnCreateDbSqlite(wxCommandEvent &event) {
 }
 
 void MainFrame::OnCreateDbPostgres(wxCommandEvent &event) {
+#ifdef ODS_POSTGRES
   auto* man = wxDocManager::GetDocumentManager();
   auto* doc = man != nullptr ? man->GetCurrentDocument() : nullptr;
   if (doc == nullptr) {
@@ -450,7 +455,9 @@ void MainFrame::OnCreateDbPostgres(wxCommandEvent &event) {
                                                     | wxICON_ERROR,this);
     return;
   }
+
   document->UpdateAllViews();
+#endif
 }
 
 void MainFrame::OnDropFiles(wxDropFilesEvent &event) {

@@ -7,6 +7,7 @@ project(odslib
         LANGUAGES C CXX)
 
 option(BUILD_SHARED_LIBS "Static libraries are preferred" OFF)
+option(ODS_POSTGRES "Add support for PostgreSQL database" OFF)
 option(ODS_DOC "Build documentation in Release mode" OFF)
 option(ODS_TOOLS "Build the GUI and executables" OFF)
 option(ODS_TEST "Build the Google unit tests" OFF)
@@ -20,15 +21,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_DEBUG_POSTFIX d)
 
+include ("script/boost.cmake")
 include ("script/utillib.cmake")
 include ("script/mdflib.cmake")
 include ("script/workflowlib.cmake")
+# Needed to include boost again due dependencies in this library
 
-include("script/boost.cmake")
 
-include("script/openssl.cmake")
-include("script/postgresql.cmake")
-include("script/openxlsx.cmake")
+if (ODS_POSTGRES)
+    include("script/openssl.cmake")
+    include("script/postgresql.cmake")
+endif()
 
 if (ODS_TOOLS)
     include("script/wxwidgets.cmake")
@@ -42,6 +45,12 @@ if (ODS_DOC)
     include("script/doxygen.cmake")
 endif()
 
+if (ODS_POSTGRES)
+    set(POSTGRES_FILES src/postgresdb.cpp src/postgresdb.h
+                       src/postgresstatement.cpp src/postgresstatement.h)
+else()
+    set(POSTGRES_FILES)
+endif()
 
 add_library(ods
         src/itable.cpp include/ods/itable.h
@@ -63,19 +72,22 @@ add_library(ods
         src/odsfactory.cpp include/ods/odsfactory.h
         src/sqlfilter.cpp include/ods/sqlfilter.h
         src/eventlogdb.cpp src/eventlogdb.h
-        src/postgresdb.cpp src/postgresdb.h
-        src/postgresstatement.cpp src/postgresstatement.h
         src/sysloginserter.cpp src/sysloginserter.h
         src/odshelper.cpp src/odshelper.h
+        ${POSTGRES_FILES}
         extern/sqlite/src/sqlite3.h extern/sqlite/src/sqlite3.c
         extern/sqlite/src/sqlite3ext.h )
 
 #set_source_files_properties(extern/sqlite/sqlite3.c PROPERTIES LANGUAGE CXX)
 
+if (ODS_POSTGRES)
+    target_include_directories(ods PRIVATE ${PostgreSQL_INCLUDE_DIRS})
+    target_compiler_definition(ods PRIVATE ODS_POSTGRES)
+endif()
 
 target_include_directories(ods PRIVATE ${Boost_INCLUDE_DIRS})
 target_include_directories(ods PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/extern/sqlite/src)
-target_include_directories(ods PRIVATE ${PostgreSQL_INCLUDE_DIRS})
+
 target_include_directories(ods PRIVATE ${utillib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${mdflib_SOURCE_DIR}/include)
 target_include_directories(ods PRIVATE ${workflowlib_SOURCE_DIR}/include)

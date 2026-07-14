@@ -5,7 +5,11 @@
 #include "ods/odsfactory.h"
 #include "testdirectory.h"
 #include "sqlitedatabase.h"
-#include "postgresdb.h"
+
+#ifdef ODS_POSTGRES
+  #include "postgresdb.h"
+#endif
+
 #include "sysloginserter.h"
 #include <util/stringutil.h>
 #include <array>
@@ -53,11 +57,14 @@ std::unique_ptr<IDatabase> OdsFactory::CreateDatabase(DbType type) {
       database = std::move(temp);
       break;
   }
+#ifdef ODS_POSTGRES
   case DbType::TypePostgres: {
       auto temp = std::make_unique<detail::PostgresDb>();
       database = std::move(temp);
       break;
   }
+#endif
+
   default:
       break;
   }

@@ -51,7 +51,7 @@ target_link_libraries(reportexplorer PRIVATE ${EXPAT_LIBRARIES})
 target_link_libraries(reportexplorer PRIVATE ${wxWidgets_LIBRARIES})
 target_link_libraries(reportexplorer PRIVATE ${Boost_LIBRARIES})
 target_link_libraries(reportexplorer PRIVATE ${ZLIB_LIBRARIES})
-
+target_link_libraries(reportexplorer PRIVATE sago::platform_folders)
 
 if (MINGW)
 target_link_libraries(reportexplorer PRIVATE crypto)

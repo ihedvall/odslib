@@ -5,7 +5,9 @@ project(OdsConfigurator
         VERSION 1.0
         DESCRIPTION "ODS Database Configurator"
         LANGUAGES CXX)
-
+if (ODS_POSTGRES)
+else()
+endif()
 add_executable(odsconfig 
         src/odsconfig.cpp src/odsconfig.h
         src/mainframe.cpp src/mainframe.h
@@ -33,7 +35,10 @@ add_executable(odsconfig
 target_include_directories(odsconfig PRIVATE ${wxWidgets_INCLUDE_DIRS})
 target_include_directories(odsconfig  PRIVATE ${Boost_INCLUDE_DIRS})
 target_include_directories(odsconfig PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../extern/sqlite/src)
+if (ODS_POSTGRES)
 target_include_directories(odsconfig PRIVATE  ${PostgreSQL_INCLUDE_DIRS})
+target_compiler_definition(odsconfig PRIVATE ODS_POSTGRES)
+endif()
 target_include_directories(odsconfig PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
 
 
@@ -55,12 +60,14 @@ target_link_libraries(odsconfig PRIVATE ${EXPAT_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${wxWidgets_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${Boost_LIBRARIES})
 target_link_libraries(odsconfig PRIVATE ${ZLIB_LIBRARIES})
+target_link_libraries(odsconfig PRIVATE sago::platform_folders)
 
+if (ODS_POSTGRES)
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpq.lib)
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgtypes.lib)
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgport.lib)
 target_link_libraries(odsconfig PRIVATE ${PostgreSQL_LIBRARY_DIRS}/libpgcommon.lib)
-
+endif()
 
 if (WIN32)
 #target_link_libraries(odsconfig PRIVATE iconv )

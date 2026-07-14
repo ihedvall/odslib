@@ -7,7 +7,6 @@
 #include <vector>
 #include <memory>
 
-
 #include <ods/iattribute.h>
 #include <ods/itable.h>
 

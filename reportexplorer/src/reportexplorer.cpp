@@ -42,6 +42,7 @@ wxEND_EVENT_TABLE()
 
 
 bool ReportExplorer::OnInit() {
+  SetAppearance(Appearance::System);
   if (!wxApp::OnInit()) {
     return false;
   }

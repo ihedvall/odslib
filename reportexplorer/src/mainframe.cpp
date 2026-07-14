@@ -68,7 +68,8 @@ MainFrame::MainFrame(const wxString& title, const wxPoint& start_pos, const wxSi
   menu_bar->Append(menu_about, wxGetStockLabel(wxID_HELP));
   wxFrameBase::SetMenuBar(menu_bar);
 
-  notebook_ = new wxNotebook(this, kIdNotebook);
+  notebook_ = new wxNotebook(this, kIdNotebook, wxDefaultPosition, wxDefaultSize,
+                             wxNB_TOP);
   notebook_->SetImageList(&image_list_);
 
   auto* env_tab = new EnvTab(notebook_);
