@@ -209,22 +209,28 @@ void SyslogInserter::InsertMessage(SyslogMessage &msg) {
 
 int64_t SyslogInserter::InsertHost(const std::string &hostname) {
   if (hostname.empty()) {
-    return 0;
+    return 0; // Should generat a NULL insert
   }
+  // Try the cache first as this is a fast way to find previously inserted items.
   if (const auto find = host_cache_.find(hostname); find != host_cache_.cend()) {
     return find->second;
   }
 
-  auto* table = model_.GetTableByName("Hostname");
-  auto* column_name = table != nullptr ? table->GetColumnByBaseName("name")
-                                       : nullptr;
-  if (table == nullptr ||  column_name == nullptr) {
+  // Next is to try to fetch it from the database.
+  const ITable* table = model_.GetTableByName("Hostname");
+  if (table == nullptr) {
+    return 0;
+  }
+  const IColumn* column_name = table->GetColumnByBaseName("name");
+  if (column_name == nullptr) {
     return 0;
   }
 
+  // Add a ignore cas filter as the database may have this as contstaint
   SqlFilter filter;
   filter.AddWhere(*column_name, SqlCondition::EqualIgnoreCase, hostname);
-  auto idx = database_->Exists(*table, filter);
+  // Check if it exists in the database
+  int64_t idx = database_->Exists(*table, filter);
   if (idx != 0) {
     host_cache_.emplace(hostname, idx);
     return idx;

@@ -11,7 +11,9 @@ include("../script/zlib.cmake")
 if (ODS_POSTGRES)
     set(POSTGRES_TEST_FILES testlibpq.cpp testpostgres.cpp testpostgres.h )
 else()
-    set(POSTGRES_TEST_FILES )
+    set(POSTGRES_TEST_FILES
+            testsysloginserter.cpp
+            testsysloginserter.h)
 endif ()
 
 add_executable(test_ods

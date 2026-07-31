@@ -48,14 +48,19 @@ class SqliteDatabase : public IDatabase {
                   std::function<void(IItem &)> OnItem) override;
   void Vacuum() override;
 
-
-  sqlite3* Sqlite3();
+  sqlite3* Sqlite3() const;
 
 protected:
-   [[nodiscard]] std::string DataTypeToDbString(DataType type) override;
-   [[nodiscard]] bool IsDataTypeString(DataType type) override;
+  [[nodiscard]] std::string DataTypeToDbString(DataType type) override;
+  [[nodiscard]] bool IsDataTypeString(DataType type) override;
 
   void InsertDumpRow(const ITable &table, IItem &row) override;
+  bool ReadSvcEnumTable(IModel& model) override;
+  bool ReadSvcEntTable(IModel& model) override;
+  bool ReadSvcAttrTable(IModel& model) override;
+  bool ReadSvcRefTable(IModel& model) override;
+
+  bool FetchModelEnvironment(IModel& model) override;
 
  private:
 
@@ -63,17 +68,12 @@ protected:
   bool transaction_ = false;
 
   std::unique_ptr<util::log::IListen> listen_ =
-      util::UtilFactory::CreateListen("ListenProxy", "LISSQLITE");
+      util::UtilFactory::CreateListen(util::log::TypeOfListen::ListenProxyType,
+       "LISSQLITE");
   size_t row_count_ = 0;
   int64_t exec_result_ = 0; ///< Resulting value from an ExecuteSql
 
 
-  bool ReadSvcEnumTable(IModel& model) override;
-  bool ReadSvcEntTable(IModel& model) override;
-  bool ReadSvcAttrTable(IModel& model) override;
-  bool ReadSvcRefTable(IModel& model) override;
-
-  bool FetchModelEnvironment(IModel& model) override;
 
   static int TraceCallback(unsigned mask, void* context,  void* arg1,
                            void* arg2);

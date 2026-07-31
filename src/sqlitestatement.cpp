@@ -2,13 +2,32 @@
  * Copyright 2021 Ingemar Hedvall
  * SPDX-License-Identifier: MIT
  */
-#include <string>
-#include <sstream>
-#include <sqlite3.h>
-#include <util/stringutil.h>
+
 #include "sqlitestatement.h"
 
+#include <cctype>
+#include <string>
+#include <sstream>
+#include <algorithm>
+
+#include <sqlite3.h>
+
+#include <util/stringutil.h>
+
+
+
 using namespace util::string;
+namespace {
+bool IsInteger(const std::string& value) {
+  auto find_char = std::ranges::find_if(value, [] (int cin) -> bool {
+    if (cin == '+') return false;
+    if (cin == '-') return false;
+    return !std::isdigit(cin);
+  });
+  return find_char != value.end() ? false :true;
+}
+}
+
 namespace ods::detail {
 
 SqliteStatement::SqliteStatement(sqlite3 *database, const std::string &sql)
@@ -138,6 +157,69 @@ void SqliteStatement::SetValue(int index, const std::vector<uint8_t> &value) con
     error << "Bind (BLOB) statement failed. Error: " << sqlite3_errstr(bind);
     throw std::runtime_error(error.str());
   }
+}
+
+void SqliteStatement::SetDefaultValue(int index, const IColumn &column) const {
+  const std::string& default_value = column.DefaultValue();
+  if (default_value.empty()) {
+    if (column.Obligatory()) {
+      // This is problem but insert an empty string instead of NULL
+      SetValue(index, std::string() );
+    } else {
+      SetValue(index, "NULL");
+    }
+  } else {
+
+    switch (column.DataType()) {
+
+      case DataType::DtShort:
+      case DataType::DtByte:
+      case DataType::DtLong:
+      case DataType::DtLongLong:
+      case DataType::DtId:
+        SetValue(index, std::stoll(default_value));
+        break;
+
+      case DataType::DtFloat:
+      case DataType::DtDouble:
+        SetValue(index, std::stod(default_value));
+        break;
+
+      case DataType::DtBoolean:
+        switch (default_value[0]) {
+          case '1':
+          case 'T':
+          case 't':
+          case 'Y':
+          case 'y':
+            SetValue(index, 1LL);
+            break;
+
+          default:
+            SetValue(index, 0LL);
+            break;
+        }
+        break;
+
+      case DataType::DtEnum:
+        // The value can either be the enumerate index or its value
+        if (IsInteger(default_value)) {
+          SetValue(index, std::stoll(default_value));
+        } else {
+          // Todo: Fetch from the SVCENUM table but need a database connection/object.
+          // Treat as a user error for the time being.
+            SetValue(index, 0LL);
+        }
+        break;
+
+      case DataType::DtString:
+      default:
+        SetValue(index, default_value);
+        break;
+    }
+
+  }
+
 }
 
 bool SqliteStatement::IsNull(int column) const {

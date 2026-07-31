@@ -30,6 +30,8 @@ class SqliteStatement final {
   void SetValue(int index, const std::string& value) const;
   void SetValue(int index, const std::vector<uint8_t>& value) const;
 
+  void SetDefaultValue(int index, const IColumn& column) const;
+
   template<typename T>
   void GetValue(int column, T& value) const;
 

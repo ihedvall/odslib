@@ -216,14 +216,14 @@ bool SqliteDatabase::ExistDatabaseTable(const std::string &dbt_name)  {
 
   std::ostringstream sql;
   sql << "SELECT COUNT(*)  FROM sqlite_master "
-      << "WHERE type='table' AND 'name=" << dbt_name << "'" ;
+      << "WHERE type='table' AND name='" << dbt_name << "'" ;
   const auto ret_val = ExecuteSql(sql.str());
   return ret_val > 0;
 }
 
 int SqliteDatabase::ExecCallback(void *object, int rows, char **value_list,
                                  char **column_list) {
-  auto* database = reinterpret_cast<SqliteDatabase*>(object);
+  auto* database = static_cast<SqliteDatabase*>(object);
   if (database == nullptr) {
     return 1;
   }
@@ -262,7 +262,7 @@ int64_t SqliteDatabase::ExecuteSql(const std::string &sql) {
   return exec_result_;
 }
 
-sqlite3 *SqliteDatabase::Sqlite3() {
+sqlite3 *SqliteDatabase::Sqlite3() const {
   return database_;
 }
 
@@ -652,7 +652,7 @@ int SqliteDatabase::TraceCallback(unsigned int mask, void *context, void *arg1, 
   if (context == nullptr) {
     return 0;
   }
-  auto* database = reinterpret_cast<SqliteDatabase*> (context);
+  auto* database = static_cast<SqliteDatabase*> (context);
   if (!database->listen_ || !database->listen_->IsActive()) {
     return 0;
   }
@@ -662,7 +662,7 @@ int SqliteDatabase::TraceCallback(unsigned int mask, void *context, void *arg1, 
       if (arg2 == nullptr) {
         return 0;
       }
-      const auto* sql = reinterpret_cast<const char*>(arg2);
+      const auto* sql = static_cast<const char*>(arg2);
       if (database->listen_->LogLevel() == 1) {
         // Show statement and rows
         database->listen_->ListenTextEx(util::time::TimeStampToNs(),
@@ -677,8 +677,8 @@ int SqliteDatabase::TraceCallback(unsigned int mask, void *context, void *arg1, 
       if (arg1 == nullptr || arg2 == nullptr) {
         return 0;
       }
-      auto* stmt = reinterpret_cast<sqlite3_stmt*>(arg1);
-      const auto* nano_sec = reinterpret_cast<int64_t*>(arg2);
+      auto* stmt = static_cast<sqlite3_stmt*>(arg1);
+      const auto* nano_sec = static_cast<int64_t*>(arg2);
       const auto* sql = sqlite3_sql(stmt);
       if (sql != nullptr && database->listen_->LogLevel() == 0) {
           // Show statement only
@@ -695,7 +695,7 @@ int SqliteDatabase::TraceCallback(unsigned int mask, void *context, void *arg1, 
         return 0;
       }
 
-      auto* stmt = reinterpret_cast<sqlite3_stmt*>(arg1);
+      auto* stmt = static_cast<sqlite3_stmt*>(arg1);
       const auto* sql = sqlite3_sql(stmt);
       if (sql == nullptr) {
         return 0;
@@ -759,10 +759,10 @@ void SqliteDatabase::Vacuum() {
 
   try {
     ExecuteSql("VACUUM");
-  } catch (const std::exception& err) {
+  } catch (const std::exception& ) {
     sqlite3_close_v2(database_);
     database_ = nullptr;
-    throw err;
+    throw;
   }
   sqlite3_close_v2(database_);
   database_ = nullptr;
@@ -876,9 +876,7 @@ void SqliteDatabase::InsertDumpRow(const ITable &table, IItem &row) {
           if (val.empty() && !col2.Obligatory() && col2.DefaultValue().empty()) {
             statement.SetValue(value_count, "NULL");
           } else {
-            char* value = sqlite3_mprintf("%Q", val.c_str());
-            statement.SetValue(value_count, value != nullptr ? value : "NULL");
-            sqlite3_free(value);
+            statement.SetValue(value_count, val);
           }
           break;
         }
@@ -916,24 +914,8 @@ void SqliteDatabase::InsertDumpRow(const ITable &table, IItem &row) {
         std::ostringstream time;
         time << "'" << timestamp << "'";
         statement.SetValue(value_count, time.str()) ;
-      } else if (!col2.DefaultValue().empty()) {
-        if (col2.IsString()) {
-          auto *value = sqlite3_mprintf("%Q", col2.DefaultValue().c_str());
-          statement.SetValue(value_count, value);
-          sqlite3_free(value);
-        } else {
-          statement.SetValue(value_count, col2.DefaultValue());
-        }
-      } else if (col2.Obligatory()) {
-        if (col2.IsString()) {
-          auto *value = sqlite3_mprintf("%Q", "");
-          statement.SetValue(value_count,value);
-          sqlite3_free(value);
-        } else {
-          statement.SetValue(value_count,"0");
-        }
       } else {
-        statement.SetValue(value_count,"NULL");
+        statement.SetDefaultValue(value_count, col2);
       }
     }
     ++value_count;
@@ -1022,9 +1004,7 @@ void SqliteDatabase::Insert(const ITable &table, IItem &row, const SqlFilter& fi
           if (val.empty() && !col2.Obligatory() && col2.DefaultValue().empty()) {
             statement.SetValue(value_count, "NULL");
           } else {
-            char *value = sqlite3_mprintf("%Q", val.c_str());
-            statement.SetValue(value_count, value != nullptr ? value : "NULL");
-            sqlite3_free(value);
+            statement.SetValue(value_count, val);
           }
           break;
         }
@@ -1063,24 +1043,8 @@ void SqliteDatabase::Insert(const ITable &table, IItem &row, const SqlFilter& fi
         std::ostringstream time;
         time << "'" << timestamp << "'";
         statement.SetValue(value_count, time.str());
-      } else if (!col2.DefaultValue().empty()) {
-        if (col2.IsString()) {
-          auto *value = sqlite3_mprintf("%Q", col2.DefaultValue().c_str());
-          statement.SetValue(value_count, value);
-          sqlite3_free(value);
-        } else {
-          statement.SetValue(value_count, col2.DefaultValue());
-        }
-      } else if (col2.Obligatory()) {
-        if (col2.IsString()) {
-          auto *value = sqlite3_mprintf("%Q", "");
-          statement.SetValue(value_count, value);
-          sqlite3_free(value);
-        } else {
-          statement.SetValue(value_count, 0LL);
-        }
       } else {
-        statement.SetValue(value_count, "NULL");
+        statement.SetDefaultValue(value_count, col2);
       }
     }
     ++value_count;
@@ -1147,9 +1111,7 @@ void SqliteDatabase::Update(const ITable &table, IItem &row, const SqlFilter& fi
 
     if (update_last_changed && attr == nullptr) {
       const std::string time_string = NsToIsoTime(now, 0); // Ignore milliseconds
-      auto *value = sqlite3_mprintf("%Q", time_string.c_str());
-      statement.SetValue(value_count, value);
-      sqlite3_free(value);
+      statement.SetValue(value_count, time_string);
       ++value_count;
       continue;
     }
@@ -1187,9 +1149,7 @@ void SqliteDatabase::Update(const ITable &table, IItem &row, const SqlFilter& fi
 
       case DataType::DtDate: {
         const auto time_string = attr->Value<std::string>();
-        auto *value = sqlite3_mprintf("%Q", time_string.c_str());
-        statement.SetValue(value_count, value);
-        sqlite3_free(value);
+        statement.SetValue(value_count, time_string);
         break;
       }
 
@@ -1204,9 +1164,7 @@ void SqliteDatabase::Update(const ITable &table, IItem &row, const SqlFilter& fi
       case DataType::DtString:
       default: {// Default treat as string
         const std::string val = attr->Value<std::string>();
-        auto *value = sqlite3_mprintf("%Q", val.c_str());
-        statement.SetValue(value_count, value);
-        sqlite3_free(value);
+        statement.SetValue(value_count, val);
         break;
       }
     } // end switch
