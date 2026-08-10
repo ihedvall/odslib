@@ -1,24 +1,19 @@
 # Copyright 2021 Ingemar Hedvall
 # SPDX-License-Identifier: MIT
+include(CMakePrintHelpers)
 
 if (NOT ZLIB_FOUND)
     SET(ZLIB_USE_STATIC_LIBS ON)
-    if (NOT ZLIB_ROOT)
-        set(ZLIB_ROOT "k:/zlib/master")
+    if (COMP_DIR)
+       set(ZLIB_ROOT ${COMP_DIR}/zlib/master)
     endif()
-
-    find_package(ZLIB)
-    message(STATUS "ZLIB Found (Try 1): " ${ZLIB_FOUND})
-    message(STATUS "ZLIB Version: " ${ZLIB_VERSION_STRING})
-    message(STATUS "ZLIB Include Dirs: " ${ZLIB_INCLUDE_DIRS})
-    message(STATUS "ZLIB Libraries: " ${ZLIB_LIBRARIES})
-
-    if (NOT ZLIB_FOUND)
-        find_package(ZLIB REQUIRED)
-        message(STATUS "ZLIB Found (Try 2): " ${ZLIB_FOUND})
-        message(STATUS "ZLIB Version: " ${ZLIB_VERSION_STRING})
-        message(STATUS "ZLIB Include Dirs: " ${ZLIB_INCLUDE_DIRS})
-        message(STATUS "ZLIB Libraries: " ${ZLIB_LIBRARIES})
-    endif()
-
+    find_package(ZLIB REQUIRED)
 endif()
+
+cmake_print_variables( ZLIB_FOUND
+                       ZLIB_VERSION
+                       ZLIB_INCLUDE_DIRS
+                       ZLIB_LIBRARIES )
+cmake_print_properties(TARGETS ZLIB::ZLIB
+                       PROPERTIES INTERFACE_INCLUDE_DIRECTORIES LOCATION)
+

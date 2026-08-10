@@ -370,21 +370,23 @@ std::string SqlFilter::GetLimitStatement() const {
     return "";
   }
   std::ostringstream limit;
+  // Add limit first, then add offset
   for (const auto &item : limit_list_) {
-    switch (item.condition) {
-    case SqlCondition::LimitNofRows:
+    if (item.condition == SqlCondition::LimitNofRows) {
+      if (!limit.str().empty()) {
+        limit << " ";
+      }
       limit << "LIMIT " << item.value;
-      break;
-
-    case SqlCondition::LimitOffset:
-      limit << "OFFSET " << item.value;
-      break;
-
-    default:
-      break;
     }
   }
-
+  for (const auto &item : limit_list_) {
+    if (item.condition == SqlCondition::LimitOffset) {
+      if (!limit.str().empty()) {
+        limit << " ";
+      }
+      limit << "OFFSET " << item.value;
+    }
+  }
   return limit.str();
 }
 

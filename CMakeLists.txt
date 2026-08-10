@@ -21,6 +21,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_DEBUG_POSTFIX d)
 
+#include ("script/zlib.cmake")
 include ("script/boost.cmake")
 include ("script/utillib.cmake")
 include ("script/mdflib.cmake")
