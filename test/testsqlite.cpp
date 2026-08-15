@@ -18,19 +18,21 @@
 
 namespace {
 
-constexpr std::string_view kLogRootDir = "o:/test";
+std::string kLogRootDir;
 constexpr std::string_view kLogFile = "ods_sqlite.log";
-constexpr std::string_view kTestDir = "o:/test/ods";
+std::string kTestDir;
 constexpr std::string_view kNotExist = "not_exist.sqlite";
 constexpr std::string_view kCreateDb = "CREATE TABLE test_a ("
                                        "id INTEGER PRIMARY KEY,"
                                        "int_value INTEGER, "
                                        "float_value FLOAT,"
                                        "text_value TEXT,"
+                                       "timestamp_value TEXT,"
                                        "blob_value BLOB)";
+
 constexpr std::string_view kSelectDb = "SELECT * FROM test_a";
-constexpr std::string_view kInsertDb = "INSERT INTO test_a (int_value, float_value, text_value, blob_value) "
-                                       "VALUES(?1, ?2, ?3, ?4)";
+constexpr std::string_view kInsertDb = "INSERT INTO test_a (int_value, float_value, text_value,timestamp_value, blob_value) "
+                                       "VALUES(?1, ?2, ?3, ?4, ?5)";
 constexpr std::string_view kNewDb = "new_db.sqlite";
 constexpr std::string_view kWriteDb = "write_db.sqlite";
 
@@ -55,6 +57,13 @@ constexpr std::array<std::string_view,4> kTextList = {
     ""
 };
 
+constexpr std::array<std::string_view,4> kTimeList = {
+    "2026-10-10T12:00:00:000Z",
+    "2026-10-10T12:01:00:666Z",
+    "1970-01-01T00:00:00:000Z",
+    "1970-01-01T00:00:00:123Z"
+};
+
 const std::array<std::vector<uint8_t>, 4>  kBlobList = {
     std::vector<uint8_t> {0,1,2,3},
     std::vector<uint8_t> {0,1,2,3},
@@ -74,11 +83,24 @@ using namespace ods::detail;
 namespace ods::test {
 
 void TestSqlite::SetUpTestSuite() {
+  kSkipTest = false;
+  try {
+    path test_dir(temp_directory_path());
+    test_dir /= "test";
+    kLogRootDir = test_dir.string();
+    test_dir /= "ods";
+    kTestDir = test_dir.string();
+  }
+  catch (const std::exception& error) {
+    kSkipTest = true;
+  }
+
   auto &log_config = LogConfig::Instance();
-  log_config.RootDir(kLogRootDir.data());
+  log_config.RootDir(kLogRootDir);
   log_config.BaseName(kLogFile.data());
   log_config.Type(LogType::LogToFile);
   log_config.CreateDefaultLogger();
+
   try {
     std::error_code err;
     remove_all(kTestDir, err);
@@ -98,7 +120,7 @@ TEST_F(TestSqlite, OpenNotExist) {
   if (kSkipTest) {
     GTEST_SKIP();
   }
-  std::filesystem::path file(kTestDir);
+  path file(kTestDir);
   file.append(kNotExist);
 
   SqliteDatabase database(file.string());
@@ -115,7 +137,7 @@ TEST_F(TestSqlite, CreateDb) {
   if (kSkipTest) {
     GTEST_SKIP();
   }
-  std::filesystem::path file(kTestDir);
+  path file(kTestDir);
   file.append(kNewDb);
   try {
     SqliteDatabase database(file.string());
@@ -142,7 +164,7 @@ TEST_F(TestSqlite, WriteAndRead) {
     GTEST_SKIP();
   }
 
-  std::filesystem::path file(kTestDir);
+  path file(kTestDir);
   file.append(kWriteDb);
     // Create DB
   try {
@@ -163,7 +185,8 @@ TEST_F(TestSqlite, WriteAndRead) {
       insert.SetValue(1, kIntList[index]);
       insert.SetValue(2, kFloatList[index]);
       insert.SetValue(3, kTextList[index].data());
-      insert.SetValue(4, kBlobList[index]);
+      insert.SetValue(4, kTimeList[index].data());
+      insert.SetValue(5, kBlobList[index]);
 
       insert.Step();
       insert.Reset();
@@ -182,6 +205,7 @@ TEST_F(TestSqlite, WriteAndRead) {
     int64_t id = 0;
     int64_t int_value = 0;
     std::string text_value;
+    std::string time_value;
     std::vector<uint8_t> blob_value;
     double float_value = 0;
     for (auto more = read.Step(); more; more = read.Step()) {
@@ -196,19 +220,16 @@ TEST_F(TestSqlite, WriteAndRead) {
 
       read.GetValue(3, text_value);
       EXPECT_EQ(text_value, kTextList[row]);
-      /*
-      if (row >= 2) {
-        EXPECT_TRUE(read.IsNull(3));
-      } else {
-        EXPECT_FALSE(read.IsNull(3));
-      }
-  */
-      read.GetValue(4, blob_value);
+
+      read.GetValue(4, time_value);
+      EXPECT_EQ(time_value, kTimeList[row]);
+
+      read.GetValue(5, blob_value);
       EXPECT_EQ(blob_value, kBlobList[row]);
       if (row >= 2) {
-        EXPECT_TRUE(read.IsNull(4));
+        EXPECT_TRUE(read.IsNull(5));
       } else {
-        EXPECT_FALSE(read.IsNull(4));
+        EXPECT_FALSE(read.IsNull(5));
       }
 
       ++row;

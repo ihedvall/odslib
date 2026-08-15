@@ -12,6 +12,7 @@
 #include <util/logconfig.h>
 #include <util/logstream.h>
 #include <util/utilfactory.h>
+#include <util/timestamp.h>
 
 #include "ods/imodel.h"
 #include "ods/odsfactory.h"
@@ -23,6 +24,7 @@ using namespace std::filesystem;
 using namespace std::chrono_literals;
 using namespace util;
 using namespace util::log;
+using namespace util::time;
 using namespace workflow;
 using namespace util::syslog;
 using namespace ods;
@@ -122,11 +124,11 @@ void TestSyslogInserter::SetUpTestSuite() {
   }
 
   // Create the LISSQLITE listen logger
-  kListenServ = UtilFactory::CreateListen(TypeOfListen::ListenConsoleType, "LISSQLITE");
-  const bool start = kListenServ->Start();
-  if (!start) {
-    LOG_ERROR() << "Failed to start listening for showing SQL operations.";
-  }
+  //kListenServ = UtilFactory::CreateListen(TypeOfListen::ListenConsoleType, "LISSQLITE");
+  //const bool start = kListenServ->Start();
+  //if (!start) {
+  //  LOG_ERROR() << "Failed to start listening for showing SQL operations.";
+  //}
 
 }
 
@@ -151,6 +153,7 @@ TEST_F(TestSyslogInserter, TestSyslogInserter) {
 
     for (size_t msg_index = 0; msg_index < max_message; ++msg_index) {
       SyslogMessage msg;
+      msg.Timestamp(TimeStampToNs());
       msg.Severity(SyslogSeverity::Informational);
       std::ostringstream msg_text;
       msg_text << "Test of SyslogInserter " << msg_index + 1;

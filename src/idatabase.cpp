@@ -246,9 +246,7 @@ std::string IDatabase::MakeDateValue(const IAttribute &attr) const {
       temp = NsToIsoTime(now, 1);
     }
   }
-  std::ostringstream temp_dotted;
-  temp_dotted << "'" << temp << "'";
-  return temp_dotted.str();
+  return temp;
 }
 
 

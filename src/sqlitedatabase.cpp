@@ -1040,9 +1040,7 @@ void SqliteDatabase::Insert(const ITable &table, IItem &row, const SqlFilter& fi
         // Note that 'ao_last_modified' is set to null at insert and set at update.
         const uint64_t now = TimeStampToNs();
         const std::string timestamp = NsToIsoTime(now, 0);
-        std::ostringstream time;
-        time << "'" << timestamp << "'";
-        statement.SetValue(value_count, time.str());
+        statement.SetValue(value_count, timestamp);
       } else {
         statement.SetDefaultValue(value_count, col2);
       }
